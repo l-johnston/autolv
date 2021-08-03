@@ -80,6 +80,14 @@ class LV_Control(ABC):
         """
         self._dataflow = DataFlow[direction.upper()]
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        tests = []
+        for selfattr, otherattr in zip(self.__dict__.keys(), other.__dict__.keys()):
+            tests.append(getattr(self, selfattr) == getattr(other, otherattr))
+        return all(tests)
+
 
 class Numeric(LV_Control):
     """Numeric"""

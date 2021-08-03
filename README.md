@@ -1,6 +1,6 @@
 # autolv - Interact with LabVIEW VIs from Python
 
-The only export from autolv is LVApp that opens an ActiveX connection to
+The only export from autolv is App that opens an ActiveX connection to
 LabVIEW through its VI Server. With a reference to LabVIEW it is then possible
 to open an ActiveX connection to a specific VI. The primary use case for this
 library is to set control values on the VI front panel from Python, run the VI,
