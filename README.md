@@ -1,3 +1,5 @@
+![Build Status](https://github.com/l-johnston/autolv/workflows/publish/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/autolv)
 # autolv - Interact with LabVIEW VIs from Python
 
 The only export from autolv is App that opens an ActiveX connection to
