@@ -7,6 +7,10 @@ to open an ActiveX connection to a specific VI. The primary use case for this
 library is to set control values on the VI front panel from Python, run the VI,
 and read the control values back into Python.
 
+Installation
+------------
+pip install autolv
+
 Example usage
 -------------
 Suppose the VI name is 'test.vi' and has a single Numeric control with the name (label)
