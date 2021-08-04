@@ -1,0 +1,48 @@
+<VI syntaxVersion=11 LVversion=20008000 revision=3 name="path.vi">
+<TITLE><NO_TITLE name="path.vi"></TITLE>
+<HELP_PATH></HELP_PATH>
+<HELP_TAG></HELP_TAG>
+<RTM_PATH type="default"></RTM_PATH>
+<DESC></DESC>
+<CONTENT>
+	<GROUPER>
+		<PARTS>
+		</PARTS></GROUPER>
+	<CONTROL ID=91 type="Path" name="input">
+		<DESC></DESC>
+		<TIP></TIP>
+		<PARTS>
+			<PART ID=8019 order=0 type="Browse Button">
+				<CONTROL ID=79 type="Boolean" name="">
+					<DESC></DESC>
+					<TIP></TIP>
+					<PARTS>
+						<PART ID=22 order=0 type="Boolean Text"><MLABEL><STRINGS><STRING></STRING></STRINGS></MLABEL></PART>
+					</PARTS>
+				</CONTROL>
+			</PART>
+			<PART ID=11 order=0 type="Text"><LABEL><STEXT></STEXT></LABEL></PART>
+		</PARTS>
+		<PRIV>
+			<PROMPT></PROMPT>
+			<MTCH_PTN></MTCH_PTN>
+			<PTN_LBEL></PTN_LBEL>
+			<STRT_PTH><PATH type="absolute"></PATH></STRT_PTH>
+			<PTH_BTN_LBL></PTH_BTN_LBL>
+		</PRIV>
+		<DEFAULT>
+			<PATH type="absolute"></PATH>
+		</DEFAULT>
+	</CONTROL>
+	<CONTROL ID=81 type="String" name="output">
+		<DESC></DESC>
+		<TIP></TIP>
+		<PARTS>
+			<PART ID=11 order=0 type="Text"><LABEL><STEXT></STEXT></LABEL></PART>
+		</PARTS>
+		<DEFAULT><SAME_AS_LABEL></DEFAULT>
+	</CONTROL>
+</CONTENT>
+</VI>
+
+

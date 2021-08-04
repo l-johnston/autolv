@@ -38,3 +38,5 @@ This increases productivity when using dot-access in an interactive session such
 IPython.
 - If your machine has multiple LabVIEW versions, launch the desired version first
 before interacting with it in Python.
+- LV's 'Time Stamp' comes across ActiveX as naive and represented in Python
+as datetime.datetime.

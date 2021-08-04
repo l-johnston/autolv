@@ -46,8 +46,12 @@ def _recurse_ctrls(element: ET.Element) -> dict:
         attrs.update({"description": desc, "tip": tip})
         for part in control.find("PARTS"):
             parttype = part.attrib["type"].lower().replace(" ", "")
-            text = part.find("LABEL").find("STEXT").text
-            attrs.update({parttype: text})
+            try:
+                text = part.find("LABEL").find("STEXT").text
+            except AttributeError:
+                pass
+            else:
+                attrs.update({parttype: text})
         controls[attrs["name"]] = attrs
         if attrs["type"] == "Cluster":
             controls[attrs["name"]]["ctrls"] = _recurse_ctrls(control)

@@ -1,5 +1,5 @@
 """Test datatypes"""
-from autolv.datatypes import Numeric, DataFlow, Cluster
+from autolv.datatypes import Numeric, DataFlow, Cluster, String
 
 # pylint:disable=missing-function-docstring
 # pylint:disable=no-member
@@ -52,3 +52,10 @@ def test_cluster():
     cc.y = True
     assert c == cc
     assert "x" in c
+
+
+def test_string():
+    kwargs = {"ID": 81, "name": "input", "type": "String", "value": "a"}
+    s = String(**kwargs)
+    assert s.name == "input"
+    assert s.value == "a"

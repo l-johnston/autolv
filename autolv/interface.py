@@ -3,9 +3,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from enum import IntEnum
 import asyncio
+from datetime import timezone
 import win32com.client
 from autolv.vistrings import parse_vistrings
-from autolv.datatypes import make_control, DataFlow, valididentifier
+from autolv.datatypes import make_control, DataFlow, valididentifier, TimeStamp
 
 
 class ExecState(IntEnum):
@@ -46,7 +47,10 @@ class VI:
                 vistr = f.read()
         self._ctrls = {k: make_control(**v) for k, v in parse_vistrings(vistr).items()}
         for ctrl in self._ctrls.values():
-            ctrl.value = self._vi.GetControlValue(ctrl.name)
+            value = self._vi.GetControlValue(ctrl.name)
+            if isinstance(ctrl, TimeStamp):
+                value = value.replace(tzinfo=None)
+            ctrl.value = value
 
     def __getitem__(self, item):
         return self._ctrls[item]
@@ -100,7 +104,11 @@ class VI:
         """
         for ctrl in self._ctrls.values():
             if ctrl._dataflow in [DataFlow.CONTROL, DataFlow.UNKNOWN]:
-                self._vi.SetControlValue(ctrl.name, ctrl.value)
+                value = ctrl.value
+                # special case TimeStamp due to timezone issue - see TimeStamp definition
+                if isinstance(ctrl, TimeStamp):
+                    value = value.replace(tzinfo=timezone.utc)
+                self._vi.SetControlValue(ctrl.name, value)
         try:
             asyncio.run(asyncio.wait_for(self._run(), timeout=timeout))
         except asyncio.TimeoutError as exc:
@@ -108,7 +116,10 @@ class VI:
         else:
             for ctrl in self._ctrls.values():
                 if ctrl._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
-                    ctrl.value = self._vi.GetControlValue(ctrl.name)
+                    value = self._vi.GetControlValue(ctrl.name)
+                    if isinstance(ctrl, TimeStamp):
+                        value = value.replace(tzinfo=None)
+                    ctrl.value = value
 
 
 class App:

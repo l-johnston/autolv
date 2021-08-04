@@ -1,0 +1,34 @@
+<VI syntaxVersion=11 LVversion=20008000 revision=4 name="timestamp.vi">
+<TITLE><NO_TITLE name="timestamp.vi"></TITLE>
+<HELP_PATH></HELP_PATH>
+<HELP_TAG></HELP_TAG>
+<RTM_PATH type="default"></RTM_PATH>
+<DESC></DESC>
+<CONTENT>
+	<GROUPER>
+		<PARTS>
+		</PARTS></GROUPER>
+	<CONTROL ID=223 type="Time Stamp" name="timestamp">
+		<DESC></DESC>
+		<TIP></TIP>
+		<PARTS>
+			<PART ID=8019 order=0 type="Browse Button">
+				<CONTROL ID=79 type="Boolean" >
+					<DESC></DESC>
+					<TIP></TIP>
+					<PARTS>
+					</PARTS>
+				</CONTROL>
+			</PART>
+		</PARTS>
+	</CONTROL>
+	<CONTROL ID=80 type="Numeric" name="seconds">
+		<DESC></DESC>
+		<TIP></TIP>
+		<PARTS>
+		</PARTS>
+	</CONTROL>
+</CONTENT>
+</VI>
+
+

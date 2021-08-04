@@ -4,6 +4,8 @@ from collections.abc import Sequence
 from numbers import Number
 from enum import IntEnum
 import re
+import pathlib
+from datetime import datetime, timezone
 import numpy as np
 
 READONLY_ATTRIBUTES = [
@@ -263,14 +265,104 @@ class Cluster(LV_Control, Sequence):
         return attrs + ctrls
 
 
+class String(LV_Control):
+    """String"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = kwargs.pop("value", "")
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if not isinstance(value, str):
+                raise TypeError(f"'{value}' not a string")
+        super().__setattr__(item, value)
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    def __str__(self):
+        return f"{self.value}"
+
+
+class Path(LV_Control):
+    """Path"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = pathlib.Path(kwargs.pop("value", ""))
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if not isinstance(value, (str, pathlib.Path)):
+                raise TypeError(f"'{value}' not a string")
+            value = pathlib.Path(value)
+        super().__setattr__(item, value)
+
+    def __getattribute__(self, item):
+        res = super().__getattribute__(item)
+        return str(res) if item == "value" else res
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    def __str__(self):
+        return f"{self.value}"
+
+
+class TimeStamp(LV_Control):
+    """Time Stamp"""
+
+    # LV 'Time Stamp' comes across ActiveX as naive but pywin32 treats it as UTC
+    # The approach here is to force the value that comes from ActiveX to naive
+    LV_EPOCH = datetime(1904, 1, 1, tzinfo=timezone.utc)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = kwargs.pop("value", self.LV_EPOCH)
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if not isinstance(value, datetime):
+                raise TypeError(f"'{value}' not a datetime")
+        super().__setattr__(item, value)
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    def __str__(self):
+        return f"{self.value}"
+
+
+class Enum(LV_Control):
+    """Enum"""
+
+    # LV Enum comes accross ActiveX as an integer
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = kwargs.pop("value", 0)
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if not isinstance(value, int):
+                raise TypeError(f"'{value}' not an integer")
+        super().__setattr__(item, value)
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    def __str__(self):
+        return f"{self.value}"
+
+
 LVControl_LU = {
     "Numeric": Numeric,
     "Boolean": Boolean,
-    "String": LV_Control,
-    "Path": LV_Control,
-    "Time Stamp": LV_Control,
+    "String": String,
+    "Path": Path,
+    "Time Stamp": TimeStamp,
     "Waveform Graph": LV_Control,
-    "Enum": LV_Control,
+    "Enum": Enum,
     "IVI Logical Name": LV_Control,
     "Slide": Numeric,
     "Array": Array,
