@@ -19,7 +19,7 @@ Suppose the VI name is 'test.vi' and has a single Numeric control with the name 
 
 ```python
 >>> import autolv
->>> lv = autolv.LVApp()
+>>> lv = autolv.App()
 >>> vi = lv.get_VI('test.vi')
 >>> vi.input = 2.0
 >>> vi.run()
