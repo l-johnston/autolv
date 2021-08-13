@@ -27,6 +27,18 @@ Suppose the VI name is 'test.vi' and has a single Numeric control with the name 
 4.0
 ```
 
+Now move the 'input and 'output' Numeric controls into a Cluster called 'data'.
+
+![test.vi](./doc/_static/testvi.png)
+
+```python
+>>> vi = lv.get_VI('test.vi')
+>>> vi.data.input = 3.0
+>>> vi.run()
+>>> vi.data.output
+6.0
+```
+
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.
