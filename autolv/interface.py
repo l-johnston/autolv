@@ -127,6 +127,13 @@ class App:
 
     def __init__(self):
         self._lv = win32com.client.Dispatch("LabVIEW.Application")
+        errvipath = str(
+            Path(self._lv.ApplicationDirectory)
+            .joinpath(r"vi.lib\Utility\error.llb\Error Code Database.vi")
+            .absolute()
+        )
+        self._errvi = self._lv.GetVIReference(errvipath)
+        self._errvi._FlagAsMethod("Run")
 
     @property
     def version(self) -> str:
@@ -143,3 +150,20 @@ class App:
         vipath = Path(vi_name)
         viref = self._lv.GetVIReference(str(vipath.absolute()))
         return VI(viref)
+
+    def explain_error(self, code: int) -> str:
+        """Explain Error
+
+        Parameters
+        ----------
+        code : int
+            error code from error cluster
+
+        Returns
+        -------
+        explanation : str
+            possible reason as found in LabVIEW's error database
+        """
+        self._errvi.SetControlValue("Error Code", code)
+        self._errvi.Run()
+        return self._errvi.GetControlValue("Error Text")

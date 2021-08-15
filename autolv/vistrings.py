@@ -19,16 +19,36 @@ def _addquotes(vistr: str) -> str:
 def _close_elements(vistr: str) -> str:
     """Close elements NO_TITLE CRLF LF"""
     # pylint: disable=cell-var-from-loop
-    for element in ["NO_TITLE", "FONT", "LF", "CRLF", "SAME_AS_LABEL"]:
+    for element in [
+        "NO_TITLE",
+        "FONT",
+        "LF",
+        "CRLF",
+        "SAME_AS_LABEL",
+        "append",
+    ]:
         vistr = re.subn(
             f"<{element}.*?>", lambda m: m.group() + f"</{element}>", vistr
         )[0]
     return vistr
 
 
+def _de_embed_elements(vistr: str) -> str:
+    """De-embed elements <<...>>"""
+    # pylint: disable=cell-var-from-loop
+    for element in [
+        "B",
+        "append",
+    ]:
+        vistr = re.subn(f"<(</?{element}>)>", lambda m: m.groups()[0], vistr)[0]
+    vistr = re.subn("<<([0-9]+)>>", lambda m: "__" + m.groups()[0] + "__", vistr)[0]
+    return vistr
+
+
 def _vistr2xml(vistr: str) -> str:
     """Fix exported VI strings to compliant XML"""
     vistr = _addquotes(vistr)
+    vistr = _de_embed_elements(vistr)
     vistr = _close_elements(vistr)
     return vistr
 

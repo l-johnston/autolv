@@ -337,7 +337,7 @@ class TimeStamp(LV_Control):
 class Enum(LV_Control):
     """Enum"""
 
-    # LV Enum comes accross ActiveX as an integer
+    # LV Enum comes across ActiveX as an integer
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.value = kwargs.pop("value", 0)
@@ -368,6 +368,7 @@ LVControl_LU = {
     "Array": Array,
     "Cluster": Cluster,
     "Measurement Data": Cluster,
+    "Classic DAQmx Physical Channel": String,
 }
 
 

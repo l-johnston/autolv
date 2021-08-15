@@ -39,6 +39,21 @@ Now move the 'input and 'output' Numeric controls into a Cluster called 'data'.
 6.0
 ```
 
+It's possible to get an error code explanation. Suppose a VI attempts to create
+an invalid DAQmx channel.
+
+![error.vi](./doc/_static/errorvi.png)
+
+```python
+>>> vi = lv.get_VI('error.vi')
+>>> vi.DAQmx = "PXI1Slot2"
+>>> vi.run()
+>>> vi['error out'].code.value
+-201237
+>>> lv.explain_error(_)
+'Physical channel name specified is invalid...'
+```
+
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.

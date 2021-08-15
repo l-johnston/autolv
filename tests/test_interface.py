@@ -43,3 +43,15 @@ def test_enum():
     vi.fruit = 1
     vi.run()
     assert vi.selection.value == "bananna"
+
+
+def test_error():
+    lv = autolv.App()
+    vi = lv.get_VI(".\\tests\\error.vi")
+    vi.DAQmx = "PXI1Slot2"
+    vi.run()
+    code = vi["error out"].code.value
+    assert code == -201237
+    assert lv.explain_error(code).startswith(
+        "Physical channel name specified is invalid"
+    )
