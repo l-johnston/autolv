@@ -91,6 +91,13 @@ class VI:
                     break
         except asyncio.CancelledError:
             self._vi.Abort()
+        else:
+            for ctrl in self._ctrls.values():
+                if ctrl._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
+                    value = self._vi.GetControlValue(ctrl.name)
+                    if isinstance(ctrl, TimeStamp):
+                        value = value.replace(tzinfo=None)
+                    ctrl.value = value
 
     def run(self, timeout: float = None) -> None:
         """Run the VI and retrieve front panel indicator values
@@ -109,17 +116,17 @@ class VI:
                 if isinstance(ctrl, TimeStamp):
                     value = value.replace(tzinfo=timezone.utc)
                 self._vi.SetControlValue(ctrl.name, value)
+
+        # check for running event loop and use it instead (e.g. Jupyter)
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            return asyncio.wait_for(self._run(), timeout=timeout)
+
         try:
             asyncio.run(asyncio.wait_for(self._run(), timeout=timeout))
         except asyncio.TimeoutError as exc:
             raise asyncio.TimeoutError(f"{self.name} did not complete") from exc
-        else:
-            for ctrl in self._ctrls.values():
-                if ctrl._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
-                    value = self._vi.GetControlValue(ctrl.name)
-                    if isinstance(ctrl, TimeStamp):
-                        value = value.replace(tzinfo=None)
-                    ctrl.value = value
+        return None
 
 
 class App:

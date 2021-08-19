@@ -54,6 +54,18 @@ an invalid DAQmx channel.
 'Physical channel name specified is invalid...'
 ```
 
+In Jupyter, run the VI in the following way:
+
+```python
+In [1]: import autolv
+In [2]: lv = autolv.App()
+In [3]: vi = lv.get_VI('test.vt')
+In [4]: vi.input = 2.0
+In [5]: await vi.run()
+In [6]: vi.output
+Out[6]: 4.0
+```
+
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.

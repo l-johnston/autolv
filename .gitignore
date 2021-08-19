@@ -5,3 +5,5 @@ build
 egg-info
 .vscode
 autolv.egg-info
+*.ipynb
+.ipynb_checkpoints/
