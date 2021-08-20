@@ -108,6 +108,17 @@ class VI:
             Allows the VI to run up to timeout seconds. A timeout forces
             the VI to abort. Default of None disables the timeout. This
             function is synchronous and blocks until the VI stops.
+
+        Notes
+        -----
+        Jupyter has a running event loop and we have to await this function from
+        within the notebook:
+
+        In [1]: import autolv
+        In [2]: lv = autolv.App()
+        In [3]: vi = lv.get_VI(<file>)
+        In [4]: await vi.run()
+
         """
         for ctrl in self._ctrls.values():
             if ctrl._dataflow in [DataFlow.CONTROL, DataFlow.UNKNOWN]:
@@ -116,16 +127,14 @@ class VI:
                 if isinstance(ctrl, TimeStamp):
                     value = value.replace(tzinfo=timezone.utc)
                 self._vi.SetControlValue(ctrl.name, value)
-
-        # check for running event loop and use it instead (e.g. Jupyter)
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return asyncio.wait_for(self._run(), timeout=timeout)
-
+        task = asyncio.wait_for(self._run(), timeout=timeout)
         try:
-            asyncio.run(asyncio.wait_for(self._run(), timeout=timeout))
+            asyncio.run(task)
         except asyncio.TimeoutError as exc:
             raise asyncio.TimeoutError(f"{self.name} did not complete") from exc
+        except RuntimeError:
+            # there's a running event loop already, e.g. Jupyter
+            return task
         return None
 
 
