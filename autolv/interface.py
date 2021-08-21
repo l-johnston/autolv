@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 from enum import IntEnum
 import asyncio
 from datetime import timezone
+import itertools
 import win32com.client
 from autolv.vistrings import parse_vistrings
 from autolv.datatypes import make_control, DataFlow, valididentifier, TimeStamp
@@ -99,6 +100,25 @@ class VI:
                         value = value.replace(tzinfo=None)
                     ctrl.value = value
 
+    async def _spinner(self):
+        spinner = ["-", "\\", "|", "/", "-", "|"]
+        glyph = itertools.cycle(spinner)
+        try:
+            while True:
+                print(next(glyph), end="\r")
+                await asyncio.sleep(0.2)
+                if ExecState(self._vi.ExecState) == ExecState.eIdle:
+                    break
+        except asyncio.CancelledError:
+            pass
+        print(" ", end="\r")
+
+    async def _task(self):
+        try:
+            await asyncio.gather(self._run(), self._spinner())
+        except asyncio.CancelledError:
+            pass
+
     def run(self, timeout: float = None) -> None:
         """Run the VI and retrieve front panel indicator values
 
@@ -127,7 +147,7 @@ class VI:
                 if isinstance(ctrl, TimeStamp):
                     value = value.replace(tzinfo=timezone.utc)
                 self._vi.SetControlValue(ctrl.name, value)
-        task = asyncio.wait_for(self._run(), timeout=timeout)
+        task = asyncio.wait_for(self._task(), timeout=timeout)
         try:
             asyncio.run(task)
         except asyncio.TimeoutError as exc:

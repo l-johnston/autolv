@@ -55,3 +55,14 @@ def test_error():
     assert lv.explain_error(code).startswith(
         "Physical channel name specified is invalid"
     )
+
+
+def test_boolean():
+    lv = autolv.App()
+    vi = lv.get_VI("./tests/boolean.vi")
+    vi.input = False
+    vi.run()
+    assert bool(vi.output) is True
+    vi.input = True
+    vi.run()
+    assert bool(vi.output) is False

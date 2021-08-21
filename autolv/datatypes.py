@@ -130,6 +130,9 @@ class Boolean(LV_Control):
     def __str__(self):
         return f"{self.value}"
 
+    def __bool__(self):
+        return self.value
+
 
 class Array(LV_Control):
     """Array"""
