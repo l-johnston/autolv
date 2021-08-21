@@ -66,6 +66,15 @@ In [6]: vi.output
 Out[6]: 4.0
 ```
 
+As a context manager:
+
+```python
+>>> with autolv.App() as lv:
+    vi = lv.get_VI(<file>)
+    ...
+>>>
+```
+
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.
