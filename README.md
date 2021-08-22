@@ -75,6 +75,8 @@ As a context manager:
 >>>
 ```
 
+Upon exiting the context, LabVIEW will be closed.
+
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.

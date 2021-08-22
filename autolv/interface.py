@@ -5,6 +5,7 @@ from enum import IntEnum
 import asyncio
 from datetime import timezone
 import itertools
+import pythoncom
 import win32com.client
 from autolv.vistrings import parse_vistrings
 from autolv.datatypes import make_control, DataFlow, valididentifier, TimeStamp
@@ -199,17 +200,27 @@ class App:
         return self._errvi.GetControlValue("Error Text")
 
     def close(self):
-        """Close LabVIEW"""
+        """Exit LabVIEW (File -> Exit)
+
+        Notes
+        -----
+        This will invalidate the App object.
+        """
         try:
             self._lv.Quit()
         except (TypeError, AttributeError):
-            # Quit() raises a Windows fatal exception: code 0x800706ba
+            # TypeError: Quit() raises a Windows fatal exception: code 0x800706ba
+            #   which then raises TypeError within win32com
+            # AttributeError: _lv doesn't yet exist - user needs to __enter__()
             pass
         self._lv = None
         self._errvi = None
 
     def __enter__(self):
         if not hasattr(self, "_lv") or self._lv is None:
+            # CoInitialize to support running under various processes
+            # e.g. rpyc server
+            pythoncom.CoInitialize()  # pylint:disable=no-member
             self._lv = win32com.client.Dispatch("LabVIEW.Application")
             errvipath = str(
                 Path(self._lv.ApplicationDirectory)
