@@ -358,6 +358,42 @@ class Enum(LV_Control):
         return f"{self.value}"
 
 
+class IORefNum(LV_Control):
+    """I/O ref num"""
+
+    # some I/O ref nums come across ActiveX as a tuple ('<str>', <int>)
+    # but end user only needs to know the <str> e.g. PXI1Slot1
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = kwargs.pop("value", ("", 0))
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if isinstance(value, str):
+                value = (value, 0)
+            if not isinstance(value, tuple):
+                raise TypeError(f"'{value}' not a tuple (<str>, <int>)")
+        super().__setattr__(item, value)
+
+    def __repr__(self):
+        return f"{self.value[0]}"
+
+    def __str__(self):
+        return f"{self.value[0]}"
+
+
+class IVILogicalName(IORefNum):
+    """IVI Logical Name"""
+
+
+class VISAResourceName(IORefNum):
+    """VISA resource name"""
+
+
+class SharedVariable(IORefNum):
+    """Shared Variable"""
+
+
 LVControl_LU = {
     "Numeric": Numeric,
     "Boolean": Boolean,
@@ -366,12 +402,14 @@ LVControl_LU = {
     "Time Stamp": TimeStamp,
     "Waveform Graph": LV_Control,
     "Enum": Enum,
-    "IVI Logical Name": LV_Control,
+    "IVI Logical Name": IVILogicalName,
     "Slide": Numeric,
     "Array": Array,
     "Cluster": Cluster,
     "Measurement Data": Cluster,
     "Classic DAQmx Physical Channel": String,
+    "VISA resource name": VISAResourceName,
+    "Classic Shared Variable Control": SharedVariable,
 }
 
 

@@ -20,7 +20,7 @@ Suppose the VI name is 'test.vi' and has a single Numeric control with the name 
 ```python
 >>> import autolv
 >>> lv = autolv.App()
->>> vi = lv.get_VI('test.vi')
+>>> vi = lv.open('test.vi')
 >>> vi.input = 2.0
 >>> vi.run()
 >>> vi.output
@@ -32,7 +32,7 @@ Now move the 'input and 'output' Numeric controls into a Cluster called 'data'.
 ![test.vi](./doc/_static/testvi.png)
 
 ```python
->>> vi = lv.get_VI('test.vi')
+>>> vi = lv.open('test.vi')
 >>> vi.data.input = 3.0
 >>> vi.run()
 >>> vi.data.output
@@ -45,7 +45,7 @@ an invalid DAQmx channel.
 ![error.vi](./doc/_static/errorvi.png)
 
 ```python
->>> vi = lv.get_VI('error.vi')
+>>> vi = lv.open('error.vi')
 >>> vi.DAQmx = "PXI1Slot2"
 >>> vi.run()
 >>> vi['error out'].code.value
@@ -59,7 +59,7 @@ In Jupyter, run the VI in the following way:
 ```python
 In [1]: import autolv
 In [2]: lv = autolv.App()
-In [3]: vi = lv.get_VI('test.vt')
+In [3]: vi = lv.open('test.vt')
 In [4]: vi.input = 2.0
 In [5]: await vi.run()
 In [6]: vi.output
@@ -70,12 +70,13 @@ As a context manager:
 
 ```python
 >>> with autolv.App() as lv:
-    vi = lv.get_VI(<file>)
+    vi = lv.open(<file>)
     ...
 >>>
 ```
 
-Upon exiting the context, LabVIEW will be closed.
+LabVIEW will close upon exiting the context if it was not running prior to
+entering the contex.
 
 Notes
 -----
@@ -90,3 +91,4 @@ IPython.
 before interacting with it in Python.
 - LV's 'Time Stamp' comes across ActiveX as naive and represented in Python
 as datetime.datetime.
+- App.get_VI() has been replaced by App.open() and will be removed in v0.3.0

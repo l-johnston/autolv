@@ -5,7 +5,9 @@ from enum import IntEnum
 import asyncio
 from datetime import timezone
 import itertools
+import warnings
 import pythoncom
+import pywintypes
 import win32com.client
 from autolv.vistrings import parse_vistrings
 from autolv.datatypes import make_control, DataFlow, valididentifier, TimeStamp
@@ -178,9 +180,22 @@ class App:
         ----------
         vi_name : str or path-like
         """
-        vipath = Path(vi_name)
-        viref = self._lv.GetVIReference(str(vipath.absolute()))
-        return VI(viref)
+        warnings.warn("get_VI will be removed in v0.3.0", FutureWarning, stacklevel=2)
+        return self.open(vi_name)
+
+    def open(self, file_name: str) -> VI:
+        """Open a LabVIEW VI
+
+        Parameters
+        ----------
+        file_name : str or path-like
+            VI to open
+        """
+        file = Path(file_name)
+        if file.suffix == ".vi":
+            viref = self._lv.GetVIReference(str(file.absolute()))
+            return VI(viref)
+        raise NotImplementedError(f"'*{file.suffix}' not supported")
 
     def explain_error(self, code: int) -> str:
         """Explain Error
@@ -200,21 +215,27 @@ class App:
         return self._errvi.GetControlValue("Error Text")
 
     def close(self):
-        """Exit LabVIEW (File -> Exit)
+        """Exit LabVIEW (File -> Exit) if the application was not already running.
 
         Notes
         -----
-        This will invalidate the App object.
+        LabVIEW will remain open if the application was already running prior to
+        instantiating App. If successfully closed, the App object will be invalid.
         """
         try:
             self._lv.Quit()
-        except (TypeError, AttributeError):
-            # TypeError: Quit() raises a Windows fatal exception: code 0x800706ba
-            #   which then raises TypeError within win32com
+        except AttributeError:
             # AttributeError: _lv doesn't yet exist - user needs to __enter__()
             pass
-        self._lv = None
-        self._errvi = None
+        else:
+            # workaround to determine if LabVIEW still running
+            try:
+                self._lv.Version
+            # pylint:disable=no-member
+            except pywintypes.com_error:
+                # LabVIEW is actually closed at this point
+                self._lv = None
+                self._errvi = None
 
     def __enter__(self):
         if not hasattr(self, "_lv") or self._lv is None:
@@ -222,6 +243,9 @@ class App:
             # e.g. rpyc server
             pythoncom.CoInitialize()  # pylint:disable=no-member
             self._lv = win32com.client.Dispatch("LabVIEW.Application")
+            methods = ["Quit"]
+            for method in methods:
+                self._lv._FlagAsMethod(method)
             errvipath = str(
                 Path(self._lv.ApplicationDirectory)
                 .joinpath(r"vi.lib\Utility\error.llb\Error Code Database.vi")
