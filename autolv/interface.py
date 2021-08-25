@@ -1,4 +1,5 @@
 """Interact with LabVIEW VIs from Python"""
+# pylint:disable=no-name-in-module
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from enum import IntEnum
@@ -6,9 +7,13 @@ import asyncio
 from datetime import timezone
 import itertools
 import warnings
+import struct
 import pythoncom
+from pythoncom import VT_ARRAY, VT_BYREF, VT_I2, VT_UI4, VT_UI1
 import pywintypes
 import win32com.client
+from win32com.client import VARIANT
+import numpy as np
 from autolv.vistrings import parse_vistrings
 from autolv.datatypes import make_control, DataFlow, valididentifier, TimeStamp
 
@@ -20,6 +25,17 @@ class ExecState(IntEnum):
     eIdle = 1
     eRunTopLevel = 2
     eRunning = 3
+
+
+class FPState(IntEnum):
+    """Front panel state"""
+
+    Invalid = 0
+    Standard = 1
+    Closed = 2
+    Hidden = 3
+    Minimized = 4
+    Maximized = 5
 
 
 class VI:
@@ -40,6 +56,9 @@ class VI:
             "Call",
             "Run",
             "Abort",
+            "OpenFrontPanel",
+            "GetPanelImage",
+            "CloseFrontPanel",
         ]
         for method in methods:
             self._vi._FlagAsMethod(method)
@@ -160,6 +179,59 @@ class VI:
             return task
         return None
 
+    @property
+    def frontpanel_state(self) -> FPState:
+        """Set the front panel state
+
+        Parameters
+        ----------
+        value : FPState
+        """
+        return FPState(self._vi.FPState)
+
+    @frontpanel_state.setter
+    def frontpanel_state(self, value: FPState) -> None:
+        current_state = self._vi.FPState
+        if current_state == FPState.Closed:
+            self._vi.OpenFrontPanel(True, value)
+        elif current_state != FPState.Closed and value == FPState.Closed:
+            self._vi.CloseFrontPanel()
+        else:
+            self._vi.FPState = value
+
+    def get_frontpanel_image(self) -> np.ndarray:
+        """Get the front panel image as 8-bit RBGA formatted array
+
+        Returns
+        -------
+        image : numpy.ndarray
+        """
+
+        def rgba(bmp, clrs):
+            img = []
+            for row in bmp:
+                pixels = []
+                for pixel in row:
+                    color = int(clrs[pixel])  # 24-bit color value
+                    rgb = struct.unpack(">BBB", color.to_bytes(3, "big"))
+                    pixel = list(rgb) + [255]
+                    pixels.append(pixel)
+                img.append(pixels)
+            return np.array(img)
+
+        # GetPanelImage() returns 8-bit 256 color image regardless of color_depth
+        color_depth = 256
+        fpsize = self._vi.FPSize
+        bitmap = VARIANT(VT_ARRAY | VT_BYREF | VT_UI1, [0] * fpsize)
+        colors = VARIANT(VT_ARRAY | VT_BYREF | VT_UI4, [0] * color_depth)
+        bounds = VARIANT(VT_ARRAY | VT_BYREF | VT_I2, [0] * 4)
+        self._vi.GetPanelImage(True, color_depth, bitmap, colors, bounds)
+        # bounds appears to be (0, 0, cols, rows)
+        cols, rows = np.array(bounds.value)[2:4]
+        bitmap = np.array(bitmap.value).reshape((rows, cols))
+        colors = np.array(colors.value)
+        return rgba(bitmap, colors)
+
 
 # pylint:disable=attribute-defined-outside-init
 class App:
@@ -232,7 +304,7 @@ class App:
             try:
                 self._lv.Version
             # pylint:disable=no-member
-            except pywintypes.com_error:
+            except (pywintypes.com_error, AttributeError):
                 # LabVIEW is actually closed at this point
                 self._lv = None
                 self._errvi = None

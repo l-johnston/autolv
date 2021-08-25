@@ -14,16 +14,16 @@ Suppose the VI name is 'test.vi' and has a single Numeric control with the name 
 
 >>> import autolv
 >>> lv = autolv.App()
->>> vi = lv.get_VI('test.vi')
+>>> vi = lv.open('test.vi')
 >>> vi.input = 2.0
 >>> vi.run()
 >>> vi.output
 4.0
 """
-from autolv.interface import App
+from autolv.interface import App, FPState
 
-__version__ = "0.2.0"
-__all__ = ["App"]
+__version__ = "0.2.1"
+__all__ = ["App", "FPState"]
 
 
 def __dir__():

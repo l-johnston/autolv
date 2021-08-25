@@ -1,7 +1,9 @@
 """Test interface"""
 from datetime import datetime
 import pytest
-import autolv
+import numpy as np
+from autolv.interface import App, FPState
+
 
 # pylint:disable=missing-function-docstring
 # pylint:disable=no-member
@@ -9,13 +11,13 @@ import autolv
 
 
 @pytest.fixture(scope="module")
-def lv():
-    _lv = autolv.App()
+def lv() -> App:
+    _lv = App()
     yield _lv
     _lv.close()
 
 
-def test_app(lv):
+def test_app(lv: App):
     # lv = autolv.App()
     assert lv.version == "20.0.1"
     vi = lv.open(".\\tests\\numeric.vi")
@@ -96,3 +98,17 @@ def test_iorefnum(lv):
 def test_getVIwarning(lv):
     with pytest.warns(FutureWarning):
         lv.get_VI("./tests/boolean.vi")
+
+
+def test_fp(lv):
+    vi = lv.open("./tests/boolean.vi")
+    assert vi.frontpanel_state == FPState.Closed
+    vi.frontpanel_state = FPState.Standard
+    assert vi.frontpanel_state == FPState.Standard
+
+
+def test_getimage(lv):
+    vi = lv.open("./tests/image.vi")
+    img = vi.get_frontpanel_image()
+    assert img.shape == (268, 366, 4)
+    assert np.all(np.unique(img) == np.array([221, 255]))
