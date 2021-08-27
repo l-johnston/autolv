@@ -90,12 +90,19 @@ def _predefinedentities(vistr: str) -> str:
     return r_vistr
 
 
+def _styledtext(vistr):
+    """convert styled text to CDATA"""
+    vistr = re.subn("<B>(.*?)</B>", lambda m: f"<![CDATA[{m.groups()[0]}]]>", vistr)[0]
+    return vistr
+
+
 def _vistr2xml(vistr: str) -> str:
     """Fix exported VI strings to compliant XML"""
     vistr = _addquotes(vistr)
     vistr = _de_embed_elements(vistr)
     vistr = _close_elements(vistr)
     vistr = _predefinedentities(vistr)
+    vistr = _styledtext(vistr)
     return vistr
 
 

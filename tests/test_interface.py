@@ -117,3 +117,8 @@ def test_getimage(lv):
 def test_predefinedentities(lv):
     vi = lv.open("./tests/predefined_entities.vi")
     assert vi.numeric.description == """' " & < >"""
+
+
+def test_styledtext(lv):
+    vi = lv.open("./tests/styledtext.vi")
+    assert vi.numeric.description == "numeric"
