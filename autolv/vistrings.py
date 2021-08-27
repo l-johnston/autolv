@@ -45,11 +45,57 @@ def _de_embed_elements(vistr: str) -> str:
     return vistr
 
 
+class ClosedInterval:
+    """closed interval 'span' from re.match"""
+
+    def __init__(self, span):
+        self.start, self.stop = span
+        self.stop = self.stop - 1
+
+    def __contains__(self, value):
+        return self.start <= value <= self.stop
+
+    def __repr__(self):
+        return f"<[{self.start}, {self.stop}]>"
+
+
+# XML escapes ' " & < > as &...;
+# LabVIEW chose not to follow the standard
+#   ' comes across as '
+#   " -> ""
+#   & -> &
+#   < -> <<
+#   > -> >>
+PREDEFINEDS = {
+    "&(?!lt;|gt;)": ("amp", 1),
+    '""': ("quot", 2),
+}
+
+
+def _predefinedentities(vistr: str) -> str:
+    """convert predefined entities"""
+    # asumming embedded tags have been deembedded
+    vistr = re.subn("<<", "&lt;", vistr)[0]
+    vistr = re.subn(">>(?!>)", "&gt;", vistr)[0]
+    # exclude altering text within tags
+    tag_spans = []
+    for tag in re.finditer("<[^<]/?.*?[^>]>", vistr):
+        tag_spans.append(ClosedInterval(tag.span()))
+    r_vistr = vistr
+    for pd, (sub, l) in PREDEFINEDS.items():
+        for matched_ch in re.finditer(pd, vistr):
+            loc = matched_ch.start()
+            if not any(map(lambda span, l=loc: l in span, tag_spans)):
+                r_vistr = r_vistr[0:loc] + f"&{sub};" + r_vistr[loc + l :]
+    return r_vistr
+
+
 def _vistr2xml(vistr: str) -> str:
     """Fix exported VI strings to compliant XML"""
     vistr = _addquotes(vistr)
     vistr = _de_embed_elements(vistr)
     vistr = _close_elements(vistr)
+    vistr = _predefinedentities(vistr)
     return vistr
 
 

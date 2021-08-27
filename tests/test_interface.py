@@ -112,3 +112,8 @@ def test_getimage(lv):
     img = vi.get_frontpanel_image()
     assert img.shape == (268, 366, 4)
     assert np.all(np.unique(img) == np.array([221, 255]))
+
+
+def test_predefinedentities(lv):
+    vi = lv.open("./tests/predefined_entities.vi")
+    assert vi.numeric.description == """' " & < >"""
