@@ -59,6 +59,7 @@ class VI:
             "OpenFrontPanel",
             "GetPanelImage",
             "CloseFrontPanel",
+            "ReinitializeAllToDefault",
         ]
         for method in methods:
             self._vi._FlagAsMethod(method)
@@ -231,6 +232,18 @@ class VI:
         bitmap = np.array(bitmap.value).reshape((rows, cols))
         colors = np.array(colors.value)
         return rgba(bitmap, colors)
+
+    def reinitialize_values(self):
+        """Reinitialize all controls to default values
+
+        Same as Edit->Reinitialize Values to Default
+        """
+        self._vi.ReinitializeAllToDefault()
+        for ctrl in self._ctrls.values():
+            value = self._vi.GetControlValue(ctrl.name)
+            if isinstance(ctrl, TimeStamp):
+                value = value.replace(tzinfo=None)
+            ctrl.value = value
 
 
 # pylint:disable=attribute-defined-outside-init

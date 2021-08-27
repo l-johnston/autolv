@@ -96,8 +96,19 @@ def _styledtext(vistr):
     return vistr
 
 
+def _removeparttext(vistr):
+    """Remove <PART ... type="Text">"""
+    vistr = re.subn(
+        '(<PART .*?type="Text">)(.*?)(</PART>)',
+        lambda m: f"{m.groups()[0]}{m.groups()[2]}",
+        vistr,
+    )[0]
+    return vistr
+
+
 def _vistr2xml(vistr: str) -> str:
     """Fix exported VI strings to compliant XML"""
+    vistr = _removeparttext(vistr)
     vistr = _addquotes(vistr)
     vistr = _de_embed_elements(vistr)
     vistr = _close_elements(vistr)

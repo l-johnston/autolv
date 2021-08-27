@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 import numpy as np
 from autolv.interface import App, FPState
+from autolv.vistrings import _removeparttext
 
 
 # pylint:disable=missing-function-docstring
@@ -122,3 +123,20 @@ def test_predefinedentities(lv):
 def test_styledtext(lv):
     vi = lv.open("./tests/styledtext.vi")
     assert vi.numeric.description == "numeric"
+
+
+def test_removeparttext():
+    vistr = '<PART ID=11 order=0 type="Text"><LABEL><STEXT>a<LF>b<LF>c</STEXT></LABEL></PART>'
+    assert _removeparttext(vistr) == '<PART ID=11 order=0 type="Text"></PART>'
+
+
+def test_stringdefaultvalue(lv):
+    vi = lv.open("./tests/string_defaultvalue.vi")
+    vi.run()
+    assert vi.string.value == "a\nb\nc"
+    vi.string.value = "abc"
+    vi.run()
+    assert vi.string.value == "abc"
+    vi.reinitialize_values()
+    vi.run()
+    assert vi.string.value == "a\nb\nc"
