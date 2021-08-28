@@ -102,6 +102,7 @@ def _removeparttext(vistr):
         '(<PART .*?type="Text">)(.*?)(</PART>)',
         lambda m: f"{m.groups()[0]}{m.groups()[2]}",
         vistr,
+        flags=re.DOTALL,
     )[0]
     return vistr
 
