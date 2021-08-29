@@ -150,3 +150,15 @@ def test_call_testvi_clusters(lv):
     vi = lv.open("./tests/test.vi")
     vi(data_in={"input": 3}, data_out={})
     assert vi.data_out.output.value == 6
+
+
+def test_call_invalididentifiers(lv):
+    vi = lv.open("./tests/numeric_invalididentifiers.vi")
+    vi(**{"x in": 2, "y out": 0})
+    assert vi["y out"].value == 4
+
+
+def test_call_iorefnum(lv):
+    vi = lv.open("./tests/io_refnum.vi")
+    vi(ivi="MVR1")
+    assert vi.ivi.value[0] == "MVR1"

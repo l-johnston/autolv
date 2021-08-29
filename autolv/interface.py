@@ -16,6 +16,7 @@ from win32com.client import VARIANT
 import numpy as np
 from autolv.vistrings import parse_vistrings
 from autolv.datatypes import (
+    IORefNum,
     make_control,
     DataFlow,
     valididentifier,
@@ -282,6 +283,9 @@ class VI:
                         cvalue = VARIANT(VT_ARRAY | VT_VARIANT, cvalue)
                     clstr_values.append(cvalue)
                 value = VARIANT(VT_ARRAY | VT_VARIANT, clstr_values)
+            elif isinstance(ctrl, IORefNum):
+                _, num = ctrl.value
+                value = VARIANT(VT_ARRAY | VT_VARIANT, [value, num])
             values.append(value)
         ctrls = VARIANT(VT_ARRAY | VT_BYREF | VT_VARIANT, ctrls)
         values = VARIANT(VT_ARRAY | VT_BYREF | VT_VARIANT, values)

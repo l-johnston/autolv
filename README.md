@@ -112,6 +112,22 @@ and `output` = 2 * `input`:
 6.0
 ```
 
+Control labels
+--------------
+It is recommended to label controls as a valid Python identifier which improves
+productivity when using dot-access in an interactive session. But, LabVIEW controls
+often are given names that are invalid Python identifiers. It is possible to work
+with these. Suppose a numeric control is labeled `x in` and the indicator `y out`:
+
+```python
+>>> import autolv
+>>> lv = autolv.App()
+>>> vi = lv.open('test.vi')
+>>> vi(**{"x in": 3, "y out": 0})
+>>> vi["y out"]
+4.0
+```
+
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.
