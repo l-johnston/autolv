@@ -78,6 +78,24 @@ As a context manager:
 LabVIEW will close upon exiting the context if it was not running prior to
 entering the contex.
 
+It is possible to call the VI object directly instead of using VI.run(). Reusing the
+'test.vi' from above where `output`= 2 * `input` and these controls have been wired
+to the connector pane:
+
+```python
+>>> import autolv
+>>> lv = autolv.App()
+>>> vi = lv.open('test.vi')
+>>> vi(input=2.0, output=0.0)
+>>> vi.output
+4.0
+```
+
+There are two key differences between VI() and VI.run():
+- VI() is blocking where as VI.run() is an asyncio task and supports a timeout.
+- VI() supports reentrant calls where as VI.run() is equivalent to Operate->Run and
+    does not support reentrant calls.
+
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.

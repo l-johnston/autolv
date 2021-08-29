@@ -19,53 +19,42 @@ def lv() -> App:
 
 
 def test_app(lv: App):
-    # lv = autolv.App()
     assert lv.version == "20.0.1"
     vi = lv.open(".\\tests\\numeric.vi")
     assert vi.input.value == 1.1
     vi.input.value = 2.0
     vi.run()
     assert vi.output.value == 4.0
-    # lv.close()
 
 
 def test_string(lv):
-    # lv = autolv.App()
     vi = lv.open(".\\tests\\string.vi")
     vi.in1 = "a"
     vi.in2 = "b"
     vi.run()
     assert vi.output.value == "ab"
-    # lv.close()
 
 
 def test_path(lv):
-    # lv = autolv.App()
     vi = lv.open(".\\tests\\path.vi")
     vi.input = ".\\tests\\path.vi"
     vi.run()
     assert vi.output.value == "tests\\path.vi"
-    # lv.close()
 
 
 def test_timestamp(lv):
-    # lv = autolv.App()
     vi = lv.open(".\\tests\\timestamp.vi")
     assert vi.timestamp.value == datetime(2021, 8, 4, 13, 42, 42, 440000)
-    # lv.close()
 
 
 def test_enum(lv):
-    # lv = autolv.App()
     vi = lv.open(".\\tests\\enum.vi")
     vi.fruit = 1
     vi.run()
     assert vi.selection.value == "bananna"
-    # lv.close()
 
 
 def test_error(lv):
-    # lv = autolv.App()
     vi = lv.open(".\\tests\\error.vi")
     vi.DAQmx = "PXI1Slot2"
     vi.run()
@@ -74,11 +63,9 @@ def test_error(lv):
     assert lv.explain_error(code).startswith(
         "Physical channel name specified is invalid"
     )
-    # lv.close()
 
 
 def test_boolean(lv):
-    # lv = autolv.App()
     vi = lv.open("./tests/boolean.vi")
     vi.input = False
     vi.run()
@@ -86,7 +73,6 @@ def test_boolean(lv):
     vi.input = True
     vi.run()
     assert bool(vi.output) is False
-    # lv.close()
 
 
 def test_iorefnum(lv):
@@ -140,3 +126,21 @@ def test_stringdefaultvalue(lv):
     vi.reinitialize_values()
     vi.run()
     assert vi.string.value == "a\nb\nc"
+
+
+def test_call(lv):
+    vi = lv.open("./tests/boolean.vi")
+    vi(input=False, output=True)
+    assert vi.output.value is True
+    vi = lv.open("./tests/numeric.vi")
+    vi(input=2, output=0)
+    assert vi.output.value == 4
+    vi = lv.open("./tests/array.vi")
+    vi(input=[1, 2, 3], output=[])
+    assert np.all(vi.output.value == [2, 4, 6])
+    vi = lv.open("./tests/cluster.vi")
+    vi(Input=[2, [3, 4]], Output=[[], 0])
+    assert vi.Output.sum.value == 14.0
+    vi = lv.open("./tests/string.vi")
+    vi(in1="a", in2="b", output="")
+    assert vi.output.value == "ab"

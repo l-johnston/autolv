@@ -9,13 +9,20 @@ import itertools
 import warnings
 import struct
 import pythoncom
-from pythoncom import VT_ARRAY, VT_BYREF, VT_I2, VT_UI4, VT_UI1
+from pythoncom import VT_ARRAY, VT_BYREF, VT_I2, VT_UI4, VT_UI1, VT_VARIANT
 import pywintypes
 import win32com.client
 from win32com.client import VARIANT
 import numpy as np
 from autolv.vistrings import parse_vistrings
-from autolv.datatypes import make_control, DataFlow, valididentifier, TimeStamp
+from autolv.datatypes import (
+    make_control,
+    DataFlow,
+    valididentifier,
+    TimeStamp,
+    Array,
+    Cluster,
+)
 
 
 class ExecState(IntEnum):
@@ -244,6 +251,42 @@ class VI:
             if isinstance(ctrl, TimeStamp):
                 value = value.replace(tzinfo=None)
             ctrl.value = value
+
+    def __call__(self, **kwargs):
+        """Call the VI as a subVI
+
+        Parameters
+        ----------
+        kwargs : dict
+            control name: value
+
+        Notes
+        -----
+        Wire all controls to the connector pane.
+        The underlying ActiveX call is blocking without a timeout mechanism.
+        Set the VI to reentrant if making multiple simultaneous calls to the VI.
+        """
+        ctrls = []
+        values = []
+        for name, value in kwargs.items():
+            ctrl = self._ctrls[name]
+            ctrls.append(name)
+            if isinstance(ctrl, Array):
+                value = VARIANT(VT_ARRAY | VT_VARIANT, value)
+            elif isinstance(ctrl, Cluster):
+                clstr_values = []
+                clstr_ctrls = ctrl.as_dict().values()
+                for clstr_ctrl, cvalue in zip(clstr_ctrls, value):
+                    if isinstance(clstr_ctrl, Array):
+                        cvalue = VARIANT(VT_ARRAY | VT_VARIANT, cvalue)
+                    clstr_values.append(cvalue)
+                value = VARIANT(VT_ARRAY | VT_VARIANT, clstr_values)
+            values.append(value)
+        ctrls = VARIANT(VT_ARRAY | VT_BYREF | VT_VARIANT, ctrls)
+        values = VARIANT(VT_ARRAY | VT_BYREF | VT_VARIANT, values)
+        self._vi.Call(ctrls, values)
+        for ctrl, value in zip(ctrls.value, values.value):
+            self._ctrls[ctrl].value = value
 
 
 # pylint:disable=attribute-defined-outside-init

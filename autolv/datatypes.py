@@ -267,6 +267,14 @@ class Cluster(LV_Control, Sequence):
                 ctrls.append(f"['{ctrl}']")
         return attrs + ctrls
 
+    @property
+    def value(self):
+        """Return cluster's values as list"""
+        values = []
+        for _, ctrl in self._ctrls.items():
+            values.append(ctrl.value)
+        return values
+
 
 class String(LV_Control):
     """String"""
