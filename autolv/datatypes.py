@@ -254,7 +254,8 @@ class Cluster(LV_Control, Sequence):
 
     def update(self, controls: dict):
         """Update from a dict"""
-        self._ctrls.update(controls)
+        for name in controls:
+            self._ctrls[name].value = controls[name]
 
     def __dir__(self):
         attrs = super().__dir__()
@@ -265,7 +266,8 @@ class Cluster(LV_Control, Sequence):
                 ctrls.append(ctrl)
             else:
                 ctrls.append(f"['{ctrl}']")
-        return attrs + ctrls
+        methods = ["as_dict", "count", "index", "update", "value"]
+        return attrs + ctrls + methods
 
     @property
     def value(self):

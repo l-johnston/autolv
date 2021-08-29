@@ -139,8 +139,14 @@ def test_call(lv):
     vi(input=[1, 2, 3], output=[])
     assert np.all(vi.output.value == [2, 4, 6])
     vi = lv.open("./tests/cluster.vi")
-    vi(Input=[2, [3, 4]], Output=[[], 0])
+    vi(Input={"gain": 2, "Array": [3, 4]}, Output={})
     assert vi.Output.sum.value == 14.0
     vi = lv.open("./tests/string.vi")
     vi(in1="a", in2="b", output="")
     assert vi.output.value == "ab"
+
+
+def test_call_testvi_clusters(lv):
+    vi = lv.open("./tests/test.vi")
+    vi(data_in={"input": 3}, data_out={})
+    assert vi.data_out.output.value == 6

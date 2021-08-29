@@ -52,6 +52,9 @@ def test_cluster():
     cc.y = True
     assert c == cc
     assert "x" in c
+    cc.update({"x": 3, "y": False})
+    assert cc.x.value == 3
+    assert cc.y.value is False
 
 
 def test_string():

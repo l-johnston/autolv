@@ -274,9 +274,10 @@ class VI:
             if isinstance(ctrl, Array):
                 value = VARIANT(VT_ARRAY | VT_VARIANT, value)
             elif isinstance(ctrl, Cluster):
+                ctrl.update(value)
                 clstr_values = []
-                clstr_ctrls = ctrl.as_dict().values()
-                for clstr_ctrl, cvalue in zip(clstr_ctrls, value):
+                for clstr_ctrl in ctrl.as_dict().values():
+                    cvalue = clstr_ctrl.value
                     if isinstance(clstr_ctrl, Array):
                         cvalue = VARIANT(VT_ARRAY | VT_VARIANT, cvalue)
                     clstr_values.append(cvalue)
