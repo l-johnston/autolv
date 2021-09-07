@@ -273,7 +273,8 @@ class VI:
             ctrl = self._ctrls[name]
             ctrls.append(name)
             if isinstance(ctrl, Array):
-                value = VARIANT(VT_ARRAY | VT_VARIANT, value)
+                ctrl.value = value
+                value = VARIANT(VT_ARRAY | VT_VARIANT, ctrl.value)
             elif isinstance(ctrl, Cluster):
                 ctrl.update(value)
                 clstr_values = []
@@ -286,6 +287,9 @@ class VI:
             elif isinstance(ctrl, IORefNum):
                 _, num = ctrl.value
                 value = VARIANT(VT_ARRAY | VT_VARIANT, [value, num])
+            else:
+                ctrl.value = value
+                value = ctrl.value
             values.append(value)
         ctrls = VARIANT(VT_ARRAY | VT_BYREF | VT_VARIANT, ctrls)
         values = VARIANT(VT_ARRAY | VT_BYREF | VT_VARIANT, values)

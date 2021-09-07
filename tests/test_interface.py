@@ -162,3 +162,27 @@ def test_call_iorefnum(lv):
     vi = lv.open("./tests/io_refnum.vi")
     vi(ivi="MVR1")
     assert vi.ivi.value[0] == "MVR1"
+
+
+def test_ring(lv):
+    vi = lv.open("./tests/ring.vi")
+    assert vi.input.value == 0
+    vi.input = "x3"
+    vi.run()
+    assert vi.input.value == 1
+
+
+def test_typedef(lv):
+    vi = lv.open("./tests/ring_typedef.vi")
+    assert vi.State.value == 0
+    vi.State = "s1"
+    vi.run()
+    assert vi.State.value == 1
+
+
+def test_ringtest(lv):
+    vi = lv.open("./tests/test_ring.vi")
+    vi(a=2, operator="+", b=3, c=0)
+    assert vi.c.value == 5
+    vi(a=4, operator="*", b=5, c=0)
+    assert vi.c.value == 20

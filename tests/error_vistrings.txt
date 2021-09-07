@@ -1,4 +1,4 @@
-<VI syntaxVersion=11 LVversion=20008000 revision=1 name="error.vi">
+<VI syntaxVersion=11 LVversion=20008000 revision=3 name="error.vi">
 <TITLE><NO_TITLE name="error.vi"></TITLE>
 <HELP_PATH></HELP_PATH>
 <HELP_TAG></HELP_TAG>
@@ -8,7 +8,7 @@
 	<GROUPER>
 		<PARTS>
 		</PARTS></GROUPER>
-	<CONTROL ID=83 type="Cluster" name="error in">
+	<CONTROL ID=83 type="Cluster" name="error out">
 		<DESC><<B>>error in<</B>> can accept error information wired from VIs previously called. Use this information to decide if any functionality should be bypassed in the event of errors from other VIs.<LF>
 <LF>
 Right-click the <<B>>error in<</B>> control on the front panel and select <<B>>Explain Error<</B>> or <<B>>Explain Warning<</B>> from the shortcut menu for more information about the error. </DESC>
@@ -46,47 +46,8 @@ Right-click the <<B>>error in<</B>> control on the front panel and select <<B>>E
 			</CONTROL>
 		</CONTENT>
 	</CONTROL>
-	<CONTROL ID=83 type="Cluster" name="error out">
-		<DESC><<B>>error in<</B>> can accept error information wired from VIs previously called. Use this information to decide if any functionality should be bypassed in the event of errors from other VIs.<LF>
-<LF>
-Right-click the <<B>>error in<</B>> control on the front panel and select <<B>>Explain Error<</B>> or <<B>>Explain Warning<</B>> from the shortcut menu for more information about the error. </DESC>
-		<TIP></TIP>
-		<PARTS>
-		</PARTS>
-		<CONTENT>
-			<GROUPER>
-				<PARTS>
-				</PARTS></GROUPER>
-			<CONTROL ID=79 type="Boolean" name="status">
-				<DESC><<B>>status<</B>> is TRUE (X) if an error occurred or FALSE (checkmark) to indicate a warning or that no error occurred.<LF>
-<LF>
-Right-click the <<B>>error in<</B>> control on the front panel and select <<B>>Explain Error<</B>> or <<B>>Explain Warning<</B>> from the shortcut menu for more information about the error.</DESC>
-				<TIP></TIP>
-				<PARTS>
-					<PART ID=22 order=0 type="Boolean Text"><MLABEL><STRINGS><STRING>OFF</STRING><STRING>ON</STRING><STRING>OFF</STRING><STRING>ON</STRING></STRINGS></MLABEL></PART>
-				</PARTS>
-			</CONTROL>
-			<CONTROL ID=80 type="Numeric" name="code">
-				<DESC></DESC>
-				<TIP></TIP>
-				<PARTS>
-				</PARTS>
-			</CONTROL>
-			<CONTROL ID=81 type="String" name="source">
-				<DESC><<B>>source<</B>> describes the origin of the error or warning.<LF>
-<LF>
-Right-click the <<B>>error in<</B>> control on the front panel and select <<B>>Explain Error<</B>> or <<B>>Explain Warning<</B>> from the shortcut menu for more information about the error.</DESC>
-				<TIP></TIP>
-				<PARTS>
-					<PART ID=11 order=0 type="Text"><LABEL><STEXT>DAQmx Create Channel (AI-Voltage-Basic).vi:1780001<<append>><LF>
-<<B>>Task Name: <</B>>_unnamedTask<<1>></STEXT></LABEL></PART>
-				</PARTS>
-				<DEFAULT><STRING></STRING></DEFAULT>
-			</CONTROL>
-		</CONTENT>
-	</CONTROL>
 	<CONTROL ID=148 type="Classic DAQmx Physical Channel" name="DAQmx">
-		<DESC></DESC>
+		<DESC>channels</DESC>
 		<TIP></TIP>
 		<PARTS>
 		</PARTS>

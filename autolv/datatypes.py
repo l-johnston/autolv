@@ -194,8 +194,11 @@ class Cluster(LV_Control, Sequence):
         if "_ctrls" in self.__dict__ and item in self._ctrls:
             self._ctrls[item].value = value
         elif item == "value":
-            for c, v in zip(self._ctrls, value):
-                self._ctrls[c].value = v
+            if isinstance(value, dict):
+                self.update(value)
+            else:
+                for c, v in zip(self._ctrls, value):
+                    self._ctrls[c].value = v
         else:
             super().__setattr__(item, value)
 
@@ -404,6 +407,27 @@ class SharedVariable(IORefNum):
     """Shared Variable"""
 
 
+class Ring(LV_Control):
+    """Ring"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = kwargs.pop("value", 0)
+        self.items = kwargs.pop("items", None)
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if isinstance(value, str):
+                value = self.items.index(value)
+        super().__setattr__(item, value)
+
+    def __repr__(self):
+        return f"{self.items[self.value]}"
+
+    def __str__(self):
+        return f"{self.items[self.value]}"
+
+
 LVControl_LU = {
     "Numeric": Numeric,
     "Boolean": Boolean,
@@ -420,6 +444,7 @@ LVControl_LU = {
     "Classic DAQmx Physical Channel": String,
     "VISA resource name": VISAResourceName,
     "Classic Shared Variable Control": SharedVariable,
+    "Ring": Ring,
 }
 
 

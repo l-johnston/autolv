@@ -120,26 +120,41 @@ def _vistr2xml(vistr: str) -> str:
 
 def _recurse_ctrls(element: ET.Element) -> dict:
     controls = {}
-    element = element.find("CONTENT")
-    if element is None:
-        return controls
     for control in element.iterfind("CONTROL"):
-        attrs = {}
-        attrs.update(control.attrib)
-        desc = control.find("DESC").text
-        tip = control.find("TIP").text
-        attrs.update({"description": desc, "tip": tip})
-        for part in control.find("PARTS"):
-            parttype = part.attrib["type"].lower().replace(" ", "")
-            try:
-                text = part.find("LABEL").find("STEXT").text
-            except AttributeError:
-                pass
-            else:
-                attrs.update({parttype: text})
-        controls[attrs["name"]] = attrs
-        if attrs["type"] == "Cluster":
-            controls[attrs["name"]]["ctrls"] = _recurse_ctrls(control)
+        if control.attrib["type"] == "Type Definition":
+            for part in control.find("PARTS").iterfind("PART"):
+                if part.attrib["type"] == "Type Def's Control":
+                    attrs = _recurse_ctrls(part).pop("")
+                    attrs["name"] = control.attrib["name"]
+                    break
+            desc = control.find("DESC").text
+            tip = control.find("TIP").text
+            attrs.update({"description": desc, "tip": tip})
+            controls[attrs["name"]] = attrs
+        else:
+            attrs = {}
+            attrs.update(control.attrib)
+            desc = control.find("DESC").text
+            tip = control.find("TIP").text
+            attrs.update({"description": desc, "tip": tip})
+            for part in control.find("PARTS"):
+                parttype = part.attrib["type"].lower().replace(" ", "")
+                try:
+                    text = part.find("LABEL").find("STEXT").text
+                except AttributeError:
+                    pass
+                else:
+                    attrs.update({parttype: text})
+                if parttype in ["ringtext"]:
+                    items = []
+                    for item in part.find("MLABEL").find("STRINGS").iterfind("STRING"):
+                        items.append(item.text)
+                    attrs.update({"items": items})
+            controls[attrs["name"]] = attrs
+            if attrs["type"] == "Cluster":
+                controls[attrs["name"]]["ctrls"] = _recurse_ctrls(
+                    control.find("CONTENT")
+                )
     return controls
 
 
@@ -148,4 +163,4 @@ def parse_vistrings(vistr: str) -> dict:
     vixml = io.StringIO(_vistr2xml(vistr))
     tree = ET.parse(vixml)
     root = tree.getroot()
-    return _recurse_ctrls(root)
+    return _recurse_ctrls(root.find("CONTENT"))
