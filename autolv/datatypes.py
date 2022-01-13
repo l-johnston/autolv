@@ -406,6 +406,9 @@ class VISAResourceName(IORefNum):
 class SharedVariable(IORefNum):
     """Shared Variable"""
 
+class UDRefNum(IORefNum):
+    """User Defined RefNum"""
+
 
 class Ring(LV_Control):
     """Ring"""
@@ -445,6 +448,7 @@ LVControl_LU = {
     "VISA resource name": VISAResourceName,
     "Classic Shared Variable Control": SharedVariable,
     "Ring": Ring,
+    "User Defined Refnum Tag": UDRefNum
 }
 
 
