@@ -465,8 +465,4 @@ def make_control(**attrs: dict) -> LV_Control:
     """Make LV_Control from VI strings attributes"""
     control_type = attrs.pop("type")
     LV_Control_cls = LVControl_LU.get(control_type, NotImplControl)
-    # if control_type in LVControl_LU:
-    #     LV_Control_cls = LVControl_LU[control_type]
-    # else:
-    #     LV_Control_cls = NotImplControl
     return LV_Control_cls(**attrs)
