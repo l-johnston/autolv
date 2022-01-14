@@ -432,14 +432,12 @@ class Ring(LV_Control):
 
 class NotImplControl(LV_Control):
     """Control Not Implemented"""
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     def __repr__(self):
-        return f"Not Implemented"
+        return "Not Implemented"
 
     def __str__(self):
-        return f"Not Implemented"
+        return "Not Implemented"
 
 LVControl_LU = {
     "Numeric": Numeric,
@@ -466,8 +464,9 @@ LVControl_LU = {
 def make_control(**attrs: dict) -> LV_Control:
     """Make LV_Control from VI strings attributes"""
     control_type = attrs.pop("type")
-    if control_type in LVControl_LU:
-        LV_Control_cls = LVControl_LU[control_type]
-    else:
-        LV_Control_cls = NotImplControl
+    LV_Control_cls = LVControl_LU.get(control_type, NotImplControl)
+    # if control_type in LVControl_LU:
+    #     LV_Control_cls = LVControl_LU[control_type]
+    # else:
+    #     LV_Control_cls = NotImplControl
     return LV_Control_cls(**attrs)
