@@ -430,6 +430,16 @@ class Ring(LV_Control):
     def __str__(self):
         return f"{self.items[self.value]}"
 
+class NotImplControl(LV_Control):
+    """Control Not Implemented"""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def __repr__(self):
+        return f"Not Implemented"
+
+    def __str__(self):
+        return f"Not Implemented"
 
 LVControl_LU = {
     "Numeric": Numeric,
@@ -437,7 +447,6 @@ LVControl_LU = {
     "String": String,
     "Path": Path,
     "Time Stamp": TimeStamp,
-    "Waveform Graph": LV_Control,
     "Enum": Enum,
     "IVI Logical Name": IVILogicalName,
     "Slide": Numeric,
@@ -448,11 +457,17 @@ LVControl_LU = {
     "VISA resource name": VISAResourceName,
     "Classic Shared Variable Control": SharedVariable,
     "Ring": Ring,
-    "User Defined Refnum Tag": UDRefNum
+    "User Defined Refnum Tag": UDRefNum,
+    "Waveform Graph": Array,
+    "XY Graph": Array
 }
 
 
 def make_control(**attrs: dict) -> LV_Control:
     """Make LV_Control from VI strings attributes"""
-    LV_Control_cls = LVControl_LU[attrs.pop("type")]
+    control_type = attrs.pop("type")
+    if control_type in LVControl_LU:
+        LV_Control_cls = LVControl_LU[control_type]
+    else:
+        LV_Control_cls = NotImplControl
     return LV_Control_cls(**attrs)
