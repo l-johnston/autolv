@@ -187,7 +187,8 @@ def test_ringtest(lv):
     vi(a=4, operator="*", b=5, c=0)
     assert vi.c.value == 20
 
+
 def test_graph(lv):
     vi = lv.open("./tests/graph.vi")
     vi.run()
-    assert (vi.Graph.value==np.array([3,3,3])).all()
+    assert (vi.Graph.value == np.array([3, 3, 3])).all()

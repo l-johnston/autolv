@@ -75,7 +75,7 @@ class VI:
         with TemporaryDirectory() as tmpdir:
             file = Path(tmpdir).joinpath(self.name)
             self._vi.ExportVIStrings(str(file.absolute()))
-            with open(file, "r") as f:
+            with open(file, "r", encoding="utf8") as f:
                 vistr = f.read()
         self._ctrls = {k: make_control(**v) for k, v in parse_vistrings(vistr).items()}
         for ctrl in self._ctrls.values():
@@ -167,7 +167,7 @@ class VI:
 
         In [1]: import autolv
         In [2]: lv = autolv.App()
-        In [3]: vi = lv.get_VI(<file>)
+        In [3]: vi = lv.open(<file>)
         In [4]: await vi.run()
 
         """
@@ -254,7 +254,7 @@ class VI:
             ctrl.value = value
 
     def __call__(self, **kwargs):
-        """Call the VI as a subVI
+        """Call the VI as a subVI where the VI is in memory and not visible
 
         Parameters
         ----------
@@ -266,6 +266,19 @@ class VI:
         Wire all controls to the connector pane.
         The underlying ActiveX call is blocking without a timeout mechanism.
         Set the VI to reentrant if making multiple simultaneous calls to the VI.
+
+        Example
+        -------
+        Suppose 'test.vi' has one numeric control called 'input' and one numeric
+        indicator called 'output' and equals 2*'input'.
+
+        >>> lv = autolv.App()
+        >>> vi = lv.open('test.vi')
+        >>> vi(input=2, output=0)
+        >>> vi.input
+        2
+        >>> vi.output
+        4.0
         """
         ctrls = []
         values = []
@@ -317,7 +330,7 @@ class App:
         ----------
         vi_name : str or path-like
         """
-        warnings.warn("get_VI will be removed in v0.3.0", FutureWarning, stacklevel=2)
+        warnings.warn("get_VI will be removed in v0.4.0", FutureWarning, stacklevel=2)
         return self.open(vi_name)
 
     def open(self, file_name: str) -> VI:
