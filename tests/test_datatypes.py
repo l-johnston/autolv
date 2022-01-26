@@ -1,5 +1,5 @@
 """Test datatypes"""
-from autolv.datatypes import Numeric, DataFlow, Cluster, String
+from autolv.datatypes import Numeric, DataFlow, Cluster, String, is_ragged
 
 # pylint:disable=missing-function-docstring
 # pylint:disable=no-member
@@ -62,3 +62,14 @@ def test_string():
     s = String(**kwargs)
     assert s.name == "input"
     assert s.value == "a"
+
+
+def test_isragged():
+    arr = [1, 2, 3]
+    assert not is_ragged(arr, False)
+    arr = [[1, 2], [3, 4]]
+    assert not is_ragged(arr, False)
+    arr = [1, 2, [3, 4]]
+    assert is_ragged(arr, False)
+    arr = [[[1, 2], [3, 4]], [[1, 2], [3, 4, 5]]]
+    assert is_ragged(arr, False)
