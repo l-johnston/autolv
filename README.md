@@ -128,6 +128,51 @@ with these. Suppose a numeric control is labeled `x in` and the indicator `y out
 4.0
 ```
 
+Waveform Graph
+--------------
+The Waveform Graph control can be a 1d array of y-axis values, 2d array of x-axis and
+y-axis values, or a cluster (t0, dt, Y) where t0 and dt are scalers and Y is the
+y-axis values.
+
+## As 1d array
+
+![graph_1d.vi](./doc/_static/graph_1d.png)
+
+```python
+>>> vi = lv.open("graph_1d.vi")
+>>> vi.run()
+>>> vi.graph.value
+array([0., 1., 2., 3., 4., 5., 6., 7., 8., 9.])
+```
+
+## As 2d array
+
+![graph_2d.vi](./doc/_static/graph_2d.png)
+
+```python
+>>> vi = lv.open("graph_1d.vi")
+>>> vi.run()
+>>> vi.graph.value
+array([[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.],
+       [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.]])
+```
+
+## As cluster
+
+![graph_cluster.vi](./doc/_static/graph_cluster.png)
+
+```python
+>>> vi = lv.open("graph_1d.vi")
+>>> vi.run()
+>>> vi.graph.value
+[0.0, 1.0, (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)]
+>>> vi.graph.t0
+0.0
+>>> vi.graph.dt
+1.0
+>>> vi.graph.Y
+array([0., 1., 2., 3., 4., 5., 6., 7., 8., 9.])
+```
 Notes
 -----
 - LabVIEW's Cluster is supported, but not as nested clusters.
@@ -141,4 +186,5 @@ IPython.
 before interacting with it in Python.
 - LV's 'Time Stamp' comes across ActiveX as naive and represented in Python
 as datetime.datetime.
-- App.get_VI() has been replaced by App.open() and will be removed in v0.3.0
+- App.get_VI() has been replaced by App.open() and will be removed in v0.4.0
+- LabVIEW's FXP and Waveform data types are not supported

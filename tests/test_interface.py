@@ -192,3 +192,38 @@ def test_graph(lv):
     vi = lv.open("./tests/graph.vi")
     vi.run()
     assert (vi.Graph.value == np.array([3, 3, 3])).all()
+
+
+def test_graph1d(lv):
+    vi = lv.open("./tests/graph_1d.vi")
+    vi.run()
+    assert (vi.graph.value == np.arange(0, 10)).all()
+
+
+def test_graph2d(lv):
+    vi = lv.open("./tests/graph_2d.vi")
+    vi.run()
+    arr = np.arange(0, 10)
+    assert (vi.graph.value == np.array([arr, arr])).all()
+
+
+def test_graph_cluster(lv):
+    vi = lv.open("./tests/graph_cluster.vi")
+    vi.run()
+    assert vi.graph.t0 == 0.0
+    assert vi.graph.dt == 1.0
+    assert (vi.graph.Y == np.arange(0, 10)).all()
+
+
+def test_graph_xy(lv):
+    vi = lv.open("./tests/graph_xy.vi")
+    vi.run()
+    arr = np.arange(0, 10)
+    assert (vi.graph.value == np.array([arr, arr])).all()
+
+
+def test_graph1dcontrol(lv):
+    vi = lv.open("./tests/graph_1d_control.vi")
+    vi.graph.value = range(0, 10)
+    vi.run()
+    assert (vi.Y.value == np.arange(0, 10)).all()

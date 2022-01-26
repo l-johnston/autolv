@@ -31,7 +31,7 @@ class DataFlow(IntEnum):
 
 def valididentifier(item: str) -> bool:
     """Test 'item' for valid Python identifier"""
-    return bool(re.match(r"^[a-zA-Z][\w]+$", item))
+    return bool(re.match(r"^[a-zA-Z][\w]*$", item))
 
 
 class LV_Control(ABC):
@@ -281,6 +281,65 @@ class Cluster(LV_Control, Sequence):
         return values
 
 
+def is_ragged(array, res):
+    """Is 'array' ragged?"""
+
+    def _len(array):
+        sz = -1
+        try:
+            sz = len(array)
+        except TypeError:
+            pass
+        return sz
+
+    if _len(array) <= 0:
+        return res
+    elem0_sz = _len(array[0])
+    for element in array:
+        if _len(element) != elem0_sz:
+            res = True
+            break
+    for element in array:
+        res = res or is_ragged(element, res)
+    return res
+
+
+class WaveformGraph(LV_Control):
+    """'Waveform Graph' can be either 1d or 2d Array or Cluster"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = kwargs.pop("value", np.array([]))
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if isinstance(value, str) or not hasattr(value, "__iter__"):
+                raise TypeError(f"'{value}' not array like")
+            if not is_ragged(value, False):
+                value = np.array(value)
+            else:
+                value = list(value)
+                super().__setattr__("t0", value[0])
+                super().__setattr__("dt", value[1])
+                super().__setattr__("Y", np.array(value[2]))
+        else:
+            try:
+                index = ["t0", "dt", "Y"].index(item)
+            except ValueError:
+                pass
+            else:
+                lvalue = super().__getattribute__("value")
+                lvalue[index] = value
+                super().__setattr__("value", lvalue)
+        super().__setattr__(item, value)
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    def __str__(self):
+        return f"{self.value}"
+
+
 class String(LV_Control):
     """String"""
 
@@ -406,6 +465,7 @@ class VISAResourceName(IORefNum):
 class SharedVariable(IORefNum):
     """Shared Variable"""
 
+
 class UDRefNum(IORefNum):
     """User Defined RefNum"""
 
@@ -430,6 +490,7 @@ class Ring(LV_Control):
     def __str__(self):
         return f"{self.items[self.value]}"
 
+
 class NotImplControl(LV_Control):
     """Control Not Implemented"""
 
@@ -438,6 +499,7 @@ class NotImplControl(LV_Control):
 
     def __str__(self):
         return "Not Implemented"
+
 
 LVControl_LU = {
     "Numeric": Numeric,
@@ -456,8 +518,8 @@ LVControl_LU = {
     "Classic Shared Variable Control": SharedVariable,
     "Ring": Ring,
     "User Defined Refnum Tag": UDRefNum,
-    "Waveform Graph": Array,
-    "XY Graph": Array
+    "Waveform Graph": WaveformGraph,
+    "XY Graph": Array,
 }
 
 
