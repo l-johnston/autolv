@@ -520,6 +520,7 @@ LVControl_LU = {
     "User Defined Refnum Tag": UDRefNum,
     "Waveform Graph": WaveformGraph,
     "XY Graph": Array,
+    "Waveform Chart": Array,
 }
 
 

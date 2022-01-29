@@ -162,7 +162,7 @@ array([[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.],
 ![graph_cluster.vi](./doc/_static/graph_cluster.png)
 
 ```python
->>> vi = lv.open("graph_1d.vi")
+>>> vi = lv.open("graph_cluster.vi")
 >>> vi.run()
 >>> vi.graph.value
 [0.0, 1.0, (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)]

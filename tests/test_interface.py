@@ -227,3 +227,9 @@ def test_graph1dcontrol(lv):
     vi.graph.value = range(0, 10)
     vi.run()
     assert (vi.Y.value == np.arange(0, 10)).all()
+
+
+def test_graphchart(lv):
+    vi = lv.open("./tests/graph_chart.vi")
+    vi.run()
+    assert (vi.graph.value == np.arange(0, 10)).all()
