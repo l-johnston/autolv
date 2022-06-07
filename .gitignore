@@ -9,3 +9,4 @@ autolv.egg-info
 .ipynb_checkpoints/
 *.txt
 .python-version
+dist

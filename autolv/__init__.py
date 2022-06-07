@@ -22,7 +22,7 @@ Suppose the VI name is 'test.vi' and has a single Numeric control with the name 
 """
 from autolv.interface import App, FPState
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __all__ = ["App", "FPState"]
 
 

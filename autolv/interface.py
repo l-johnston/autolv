@@ -416,7 +416,7 @@ class Project:
         self._proj = lvproj_ref
         self._lv = self._proj.Application
 
-    def open(self, file_name: str | Path) -> VI:
+    def open(self, file_name: str) -> VI:
         """Open a LabVIEW VI
 
         Parameters
@@ -447,7 +447,7 @@ class App:
         """LabVIEW version"""
         return self._lv.Version
 
-    def open(self, file_name: str | Path) -> VI:
+    def open(self, file_name: str) -> VI:
         """Open a LabVIEW VI or Project
 
         Parameters
