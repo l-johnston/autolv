@@ -7,4 +7,5 @@ egg-info
 autolv.egg-info
 *.ipynb
 .ipynb_checkpoints/
-*_vistrings.txt
+*.txt
+.python-version

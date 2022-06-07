@@ -16,7 +16,12 @@ READONLY_ATTRIBUTES = [
     "tip",
     "caption",
     "unitlabel",
+    "pages",
 ]
+
+
+class AutoLVError(Exception):
+    """AutoLVError"""
 
 
 class DataFlow(IntEnum):
@@ -63,14 +68,14 @@ class LV_Control(ABC):
 
     def __setattr__(self, item, value):
         if item in self.__dict__ and item in READONLY_ATTRIBUTES:
-            raise AttributeError(f"can't set {item}")
+            raise AutoLVError(f"can't set {item}")
         super().__setattr__(item, value)
 
     def __hash__(self):
         return hash(self.name)
 
     def __dir__(self):
-        attrs = [a for a in self.__dict__ if not a.startswith("_")]
+        attrs = [a for a in super().__dir__() if not a.startswith("_")]
         return attrs
 
     def set_dataflow(self, direction: str) -> None:
@@ -100,8 +105,10 @@ class Numeric(LV_Control):
 
     def __setattr__(self, item, value):
         if item == "value":
+            if value is None:
+                value = np.nan
             if not isinstance(value, Number):
-                raise TypeError(f"'{value}' not a number")
+                raise AutoLVError(f"'{value}' not a number")
         super().__setattr__(item, value)
 
     def __repr__(self):
@@ -121,7 +128,7 @@ class Boolean(LV_Control):
     def __setattr__(self, item, value):
         if item == "value":
             if not isinstance(value, bool):
-                raise TypeError(f"'{value}' not a boolean")
+                raise AutoLVError(f"'{value}' not a boolean")
         super().__setattr__(item, value)
 
     def __repr__(self):
@@ -144,7 +151,7 @@ class Array(LV_Control):
     def __setattr__(self, item, value):
         if item == "value":
             if isinstance(value, str) or not hasattr(value, "__iter__"):
-                raise TypeError(f"'{value}' not array like")
+                raise AutoLVError(f"'{value}' not array like")
             value = np.array(value)
         super().__setattr__(item, value)
 
@@ -196,9 +203,14 @@ class Cluster(LV_Control, Sequence):
         elif item == "value":
             if isinstance(value, dict):
                 self.update(value)
+            elif value is None:
+                pass
             else:
-                for c, v in zip(self._ctrls, value):
-                    self._ctrls[c].value = v
+                try:
+                    for c, v in zip(self._ctrls, value):
+                        self._ctrls[c].value = v
+                except TypeError:
+                    pass
         else:
             super().__setattr__(item, value)
 
@@ -269,7 +281,7 @@ class Cluster(LV_Control, Sequence):
                 ctrls.append(ctrl)
             else:
                 ctrls.append(f"['{ctrl}']")
-        methods = ["as_dict", "count", "index", "update", "value"]
+        methods = ["as_dict", "count", "index", "update", "reorder_controls", "value"]
         return attrs + ctrls + methods
 
     @property
@@ -279,6 +291,59 @@ class Cluster(LV_Control, Sequence):
         for _, ctrl in self._ctrls.items():
             values.append(ctrl.value)
         return values
+
+    def reorder_controls(self, new_order: list):
+        """Reorder the controls
+
+        This function provides a work around to specify the ordering
+        of controls of a cluster in the Silver style.
+
+        Parameters
+        ----------
+        new_order: list of control names ordered as shown in LabVIEW
+        """
+        ctrls = self._ctrls.copy()
+        self._ctrls = {}
+        for name in new_order:
+            self._ctrls[name] = ctrls[name]
+
+
+class ArrayCluster(LV_Control):
+    """Array of clusters"""
+
+    def __init__(self, **kwargs):
+        self._cluster = kwargs.pop("cluster", None)
+        super().__init__(**kwargs)
+        if self._cluster is not None:
+            self._cluster = self._cluster.popitem()[1]
+        self.value = kwargs.pop("value", [])
+
+    def __setattr__(self, item, value):
+        if item == "value":
+            if isinstance(value, str) or not hasattr(value, "__iter__"):
+                raise AutoLVError(f"'{value}' not array like")
+        super().__setattr__(item, value)
+
+    def __repr__(self):
+        return f"{self.value}"
+
+    def __str__(self):
+        return f"{self.value}"
+
+    def reorder_cluster_controls(self, new_order):
+        """Reorder the controls
+
+        This function provides a work around to specify the ordering
+        of controls of a cluster in the Silver style.
+
+        Parameters
+        ----------
+        new_order: list of control names ordered as shown in LabVIEW
+        """
+        ctrls = self._cluster["ctrls"].copy()
+        self._cluster["ctrls"] = {}
+        for name in new_order:
+            self._cluster["ctrls"][name] = ctrls[name]
 
 
 def is_ragged(array, res):
@@ -314,7 +379,7 @@ class WaveformGraph(LV_Control):
     def __setattr__(self, item, value):
         if item == "value":
             if isinstance(value, str) or not hasattr(value, "__iter__"):
-                raise TypeError(f"'{value}' not array like")
+                raise AutoLVError(f"'{value}' not array like")
             if not is_ragged(value, False):
                 value = np.array(value)
             else:
@@ -350,7 +415,7 @@ class String(LV_Control):
     def __setattr__(self, item, value):
         if item == "value":
             if not isinstance(value, str):
-                raise TypeError(f"'{value}' not a string")
+                raise AutoLVError(f"'{value}' not a string")
         super().__setattr__(item, value)
 
     def __repr__(self):
@@ -370,7 +435,7 @@ class Path(LV_Control):
     def __setattr__(self, item, value):
         if item == "value":
             if not isinstance(value, (str, pathlib.Path)):
-                raise TypeError(f"'{value}' not a string")
+                raise AutoLVError(f"'{value}' not a string")
             value = pathlib.Path(value)
         super().__setattr__(item, value)
 
@@ -399,7 +464,7 @@ class TimeStamp(LV_Control):
     def __setattr__(self, item, value):
         if item == "value":
             if not isinstance(value, datetime):
-                raise TypeError(f"'{value}' not a datetime")
+                raise AutoLVError(f"'{value}' not a datetime")
         super().__setattr__(item, value)
 
     def __repr__(self):
@@ -420,7 +485,7 @@ class Enum(LV_Control):
     def __setattr__(self, item, value):
         if item == "value":
             if not isinstance(value, int):
-                raise TypeError(f"'{value}' not an integer")
+                raise AutoLVError(f"'{value}' not an integer")
         super().__setattr__(item, value)
 
     def __repr__(self):
@@ -444,7 +509,7 @@ class IORefNum(LV_Control):
             if isinstance(value, str):
                 value = (value, 0)
             if not isinstance(value, tuple):
-                raise TypeError(f"'{value}' not a tuple (<str>, <int>)")
+                raise AutoLVError(f"'{value}' not a tuple (<str>, <int>)")
         super().__setattr__(item, value)
 
     def __repr__(self):
@@ -491,6 +556,104 @@ class Ring(LV_Control):
         return f"{self.items[self.value]}"
 
 
+class TabControl(LV_Control, Sequence):
+    """Tab Control"""
+
+    def __init__(self, **kwargs):
+        pages = kwargs.pop("pages", {})
+        super().__init__(**kwargs)
+        self._pages = {}
+        for name, ctrls in pages.items():
+            self._pages[name] = TabControlPage(**ctrls)
+
+    def __repr__(self):
+        return "<Tab Control>"
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __getitem__(self, page):
+        if isinstance(page, int):
+            page = list(self._pages)[page]
+        return self._pages[page]
+
+    def __len__(self):
+        return len(self._pages)
+
+    def __dir__(self):
+        attrs = super().__dir__()
+        attrs = [a for a in attrs if not a.startswith("_")]
+        pages = []
+        for page in self._pages:
+            if valididentifier(page):
+                pages.append(page)
+            else:
+                pages.append(f"['{page}']")
+        return attrs + pages
+
+    def __getattr__(self, item):
+        if item in self._pages:
+            value = self._pages[item]
+        else:
+            value = super().__getattribute__(item)
+        return value
+
+    def __iter__(self):
+        for _, page in self._pages.items():
+            yield page
+
+
+class TabControlPage(Sequence):
+    """A page of a tab control"""
+
+    def __init__(self, **ctrls):
+        self._ctrls = {}
+        for name, attrs in ctrls.items():
+            self._ctrls[name] = make_control(**attrs)
+
+    def __repr__(self):
+        return "<Tab Control Page>"
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __dir__(self):
+        attrs = super().__dir__()
+        attrs = [a for a in attrs if not a.startswith("_")]
+        ctrls = []
+        for ctrl in self._ctrls:
+            if valididentifier(ctrl):
+                ctrls.append(ctrl)
+            else:
+                ctrls.append(f"['{ctrl}']")
+        return attrs + ctrls
+
+    def __getattr__(self, item):
+        if item in self._ctrls:
+            value = self._ctrls[item]
+        else:
+            value = super().__getattribute__(item)
+        return value
+
+    def __len__(self):
+        return len(self._ctrls)
+
+    def __iter__(self):
+        for _, ctrl in self._ctrls.items():
+            yield ctrl
+
+    def __setattr__(self, item, value):
+        if "_ctrls" in self.__dict__ and item in self._ctrls:
+            self._ctrls[item].value = value
+        else:
+            super().__setattr__(item, value)
+
+    def __getitem__(self, control):
+        if isinstance(control, int):
+            control = list(self._ctrls)[control]
+        return self._ctrls[control]
+
+
 class NotImplControl(LV_Control):
     """Control Not Implemented"""
 
@@ -498,7 +661,7 @@ class NotImplControl(LV_Control):
         return "Not Implemented"
 
     def __str__(self):
-        return "Not Implemented"
+        return self.__repr__()
 
 
 LVControl_LU = {
@@ -512,7 +675,7 @@ LVControl_LU = {
     "Slide": Numeric,
     "Array": Array,
     "Cluster": Cluster,
-    "Measurement Data": Cluster,
+    "Measurement Data": NotImplControl,  # see Azdo bug #1812742
     "Classic DAQmx Physical Channel": String,
     "VISA resource name": VISAResourceName,
     "Classic Shared Variable Control": SharedVariable,
@@ -521,6 +684,8 @@ LVControl_LU = {
     "Waveform Graph": WaveformGraph,
     "XY Graph": Array,
     "Waveform Chart": Array,
+    "Tab Control": TabControl,
+    "ArrayCluster": ArrayCluster,
 }
 
 

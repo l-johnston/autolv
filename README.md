@@ -173,9 +173,42 @@ array([[0., 1., 2., 3., 4., 5., 6., 7., 8., 9.],
 >>> vi.graph.Y
 array([0., 1., 2., 3., 4., 5., 6., 7., 8., 9.])
 ```
+
+## Tab control
+
+![tab control.vi](./doc/_static/tabctrl.png)
+
+```python
+>>> vi = lv.open("tab control.vi")
+>>> vi.tabcontrol.page1.cluster.b
+0.0
+```
+
+## Project
+
+```python
+>>> project = lv.open('<file>.lvproj')
+>>> vi = project.open('<file>.vi')
+```
+
+## Reordering cluster controls
+Clusters in the Silver visual style need to be reordered after opening the VI.
+
+![silver error cluster.vi](./doc/_static/silver_errclstr.png)
+
+```python
+>>> vi = lv.open("silver error cluster.vi")
+>>> vi["error in"]
+Cluster({'code': True, 'source': , 'status': False})
+>>> cluster = vi["error in"]
+>>> cluster.reorder_controls(["status", "code", "source"])
+>>> vi.read_controls()
+>>> vi["error in"]
+Cluster({'status': True, 'code': 1, 'source': abc})
+```
+
 Notes
 -----
-- LabVIEW's Cluster is supported, but not as nested clusters.
 - LV Controls have a Label attribute. ActiveX calls this Label 'name' and this is
 the only mechanism for set/get a Control. So, the Label must be unique among
 the front panel controls.
@@ -186,5 +219,4 @@ IPython.
 before interacting with it in Python.
 - LV's 'Time Stamp' comes across ActiveX as naive and represented in Python
 as datetime.datetime.
-- App.get_VI() has been replaced by App.open() and will be removed in v0.4.0
 - LabVIEW's FXP and Waveform data types are not supported
