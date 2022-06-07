@@ -27,6 +27,7 @@ def _close_elements(vistr: str) -> str:
         "SAME_AS_LABEL",
         "append",
         "NON_STRING",
+        "SEP",
     ]:
         vistr = re.subn(
             f"<{element}.*?>", lambda m: m.group() + f"</{element}>", vistr

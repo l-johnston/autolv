@@ -112,13 +112,17 @@ class VI:
                     value = np.nan
                 ctrl.value = value
             else:
-                value = self._vi.GetControlValue(ctrl.name)
-                if isinstance(ctrl, TimeStamp):
-                    value = value.replace(tzinfo=None)
                 try:
-                    ctrl.value = value
-                except AutoLVError:
+                    value = self._vi.GetControlValue(ctrl.name)
+                except com_error:
                     pass
+                else:
+                    if isinstance(ctrl, TimeStamp):
+                        value = value.replace(tzinfo=None)
+                    try:
+                        ctrl.value = value
+                    except AutoLVError:
+                        pass
 
     def __getitem__(self, item):
         return self._ctrls[item]
@@ -533,3 +537,9 @@ class App:
         if self._lv is None:
             return "<LabVIEW not running>"
         return f"<LabVIEW {self.version}>"
+
+
+# TODO: remove
+if __name__ == "__main__":
+    lv = App()
+    vi = lv.open("d:/temp/stresstest_spectrum3.vi")
