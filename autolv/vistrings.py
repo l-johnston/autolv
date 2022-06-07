@@ -26,6 +26,7 @@ def _close_elements(vistr: str) -> str:
         "CRLF",
         "SAME_AS_LABEL",
         "append",
+        "NON_STRING",
     ]:
         vistr = re.subn(
             f"<{element}.*?>", lambda m: m.group() + f"</{element}>", vistr
@@ -81,13 +82,17 @@ def _predefinedentities(vistr: str) -> str:
     tag_spans = []
     for tag in re.finditer("<[^<]/?.*?[^>]>", vistr):
         tag_spans.append(ClosedInterval(tag.span()))
-    r_vistr = vistr
-    for pd, (sub, l) in PREDEFINEDS.items():
+    tag_span_subs = []
+    for pd, sub in PREDEFINEDS.items():
         for matched_ch in re.finditer(pd, vistr):
             loc = matched_ch.start()
             if not any(map(lambda span, l=loc: l in span, tag_spans)):
-                r_vistr = r_vistr[0:loc] + f"&{sub};" + r_vistr[loc + l :]
-    return r_vistr
+                tag_span_subs.append((loc, sub))
+    x = 0
+    for loc, (s, l) in sorted(tag_span_subs):
+        vistr = vistr[0 : loc + x] + f"&{s};" + vistr[loc + x + l :]
+        x += len(s) + 2 - l
+    return vistr
 
 
 def _styledtext(vistr):
@@ -130,6 +135,34 @@ def _recurse_ctrls(element: ET.Element) -> dict:
             desc = control.find("DESC").text
             tip = control.find("TIP").text
             attrs.update({"description": desc, "tip": tip})
+            controls[attrs["name"]] = attrs
+        elif control.attrib["type"] == "Tab Control":
+            attrs = {}
+            attrs.update(control.attrib)
+            desc = control.find("DESC").text
+            tip = control.find("TIP").text
+            attrs.update({"description": desc, "tip": tip})
+            pages = []
+            for page in control.iterfind("PAGE"):
+                pages.append(_recurse_ctrls(page))
+            pagecaptions = []
+            for caption in (
+                control.find("PRIV").find("PAGE_CAPTIONS").iterfind("STRING")
+            ):
+                pagecaptions.append(caption.text)
+            attrs["pages"] = dict(zip(pagecaptions, pages))
+            controls[attrs["name"]] = attrs
+        elif control.attrib["type"] == "Array":
+            attrs = {}
+            attrs["cluster"] = None
+            attrs.update(control.attrib)
+            desc = control.find("DESC").text
+            tip = control.find("TIP").text
+            attrs.update({"description": desc, "tip": tip})
+            element_ctrl = control.find("CONTENT").find("CONTROL")
+            if element_ctrl.attrib["type"] == "Cluster":
+                attrs["type"] = "ArrayCluster"
+                attrs["cluster"] = _recurse_ctrls(control.find("CONTENT"))
             controls[attrs["name"]] = attrs
         else:
             attrs = {}

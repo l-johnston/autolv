@@ -3,6 +3,7 @@ from autolv.datatypes import Numeric, DataFlow, Cluster, String, is_ragged
 
 # pylint:disable=missing-function-docstring
 # pylint:disable=no-member
+# pylint:disable=protected-access
 def test_numeric():
     kwargs = {
         "ID": 83,

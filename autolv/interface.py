@@ -1,15 +1,15 @@
 """Interact with LabVIEW VIs from Python"""
 # pylint:disable=no-name-in-module
+# pylint:disable=protected-access
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from enum import IntEnum
 import asyncio
 from datetime import timezone
 import itertools
-import warnings
 import struct
 import pythoncom
-from pythoncom import VT_ARRAY, VT_BYREF, VT_I2, VT_UI4, VT_UI1, VT_VARIANT
+from pythoncom import VT_ARRAY, VT_BYREF, VT_I2, VT_UI4, VT_UI1, VT_VARIANT, com_error
 import pywintypes
 import win32com.client
 from win32com.client import VARIANT
@@ -23,6 +23,10 @@ from autolv.datatypes import (
     TimeStamp,
     Array,
     Cluster,
+    TabControl,
+    ArrayCluster,
+    Numeric,
+    AutoLVError,
 )
 
 
@@ -75,14 +79,46 @@ class VI:
         with TemporaryDirectory() as tmpdir:
             file = Path(tmpdir).joinpath(self.name)
             self._vi.ExportVIStrings(str(file.absolute()))
-            with open(file, "r", encoding="utf8") as f:
+            with open(file, "r", encoding="ansi") as f:
                 vistr = f.read()
         self._ctrls = {k: make_control(**v) for k, v in parse_vistrings(vistr).items()}
         for ctrl in self._ctrls.values():
-            value = self._vi.GetControlValue(ctrl.name)
-            if isinstance(ctrl, TimeStamp):
-                value = value.replace(tzinfo=None)
-            ctrl.value = value
+            if isinstance(ctrl, TabControl):
+                for page in ctrl:
+                    for c in page:
+                        v = self._vi.GetControlValue(c.name)
+                        if isinstance(c, TimeStamp):
+                            v = v.replace(tzinfo=None)
+                        try:
+                            c.value = v
+                        except AutoLVError:
+                            pass
+            elif isinstance(ctrl, ArrayCluster):
+                rawvalues = self._vi.GetControlValue(ctrl.name)
+                clstrvalues = []
+                for value in rawvalues:
+                    clstrvalue = Cluster(**ctrl._cluster)
+                    try:
+                        clstrvalue.update(dict(zip(clstrvalue._ctrls, value)))
+                    except AutoLVError:
+                        pass
+                    clstrvalues.append(clstrvalue)
+                ctrl.value = clstrvalues
+            elif isinstance(ctrl, Numeric):
+                try:
+                    value = self._vi.GetControlValue(ctrl.name)
+                except com_error:
+                    # FXP not supported through LabVIEW's ActiveX server
+                    value = np.nan
+                ctrl.value = value
+            else:
+                value = self._vi.GetControlValue(ctrl.name)
+                if isinstance(ctrl, TimeStamp):
+                    value = value.replace(tzinfo=None)
+                try:
+                    ctrl.value = value
+                except AutoLVError:
+                    pass
 
     def __getitem__(self, item):
         return self._ctrls[item]
@@ -125,7 +161,30 @@ class VI:
             self._vi.Abort()
         else:
             for ctrl in self._ctrls.values():
-                if ctrl._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
+                if isinstance(ctrl, TabControl):
+                    for page in ctrl:
+                        for c in page:
+                            if c._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
+                                v = self._vi.GetControlValue(c.name)
+                                if isinstance(c, TimeStamp):
+                                    v = v.replace(tzinfo=None)
+                                c.value = v
+                elif isinstance(ctrl, ArrayCluster):
+                    rawvalues = self._vi.GetControlValue(ctrl.name)
+                    clstrvalues = []
+                    for value in rawvalues:
+                        clstrvalue = Cluster(**ctrl._cluster)
+                        clstrvalue.update(dict(zip(clstrvalue._ctrls, value)))
+                        clstrvalues.append(clstrvalue)
+                    ctrl.value = clstrvalues
+                elif isinstance(ctrl, Numeric):
+                    try:
+                        value = self._vi.GetControlValue(ctrl.name)
+                    except com_error:
+                        # FXP not supported through LabVIEW's ActiveX server
+                        value = np.nan
+                    ctrl.value = value
+                elif ctrl._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
                     value = self._vi.GetControlValue(ctrl.name)
                     if isinstance(ctrl, TimeStamp):
                         value = value.replace(tzinfo=None)
@@ -172,7 +231,15 @@ class VI:
 
         """
         for ctrl in self._ctrls.values():
-            if ctrl._dataflow in [DataFlow.CONTROL, DataFlow.UNKNOWN]:
+            if isinstance(ctrl, TabControl):
+                for page in ctrl:
+                    for c in page:
+                        if c._dataflow in [DataFlow.CONTROL, DataFlow.UNKNOWN]:
+                            v = c.value
+                            if isinstance(c, TimeStamp):
+                                v = v.replace(tzinfo=timezone.utc)
+                            self._vi.SetControlValue(c.name, v)
+            elif ctrl._dataflow in [DataFlow.CONTROL, DataFlow.UNKNOWN]:
                 value = ctrl.value
                 # special case TimeStamp due to timezone issue - see TimeStamp definition
                 if isinstance(ctrl, TimeStamp):
@@ -241,17 +308,44 @@ class VI:
         colors = np.array(colors.value)
         return rgba(bitmap, colors)
 
+    def read_controls(self):
+        """Read control values from front panel"""
+        for ctrl in self._ctrls.values():
+            if isinstance(ctrl, TabControl):
+                for page in ctrl:
+                    for c in page:
+                        v = self._vi.GetControlValue(c.name)
+                        if isinstance(c, TimeStamp):
+                            v = v.replace(tzinfo=None)
+                        c.value = v
+            elif isinstance(ctrl, ArrayCluster):
+                rawvalues = self._vi.GetControlValue(ctrl.name)
+                clstrvalues = []
+                for value in rawvalues:
+                    clstrvalue = Cluster(**ctrl._cluster)
+                    clstrvalue.update(dict(zip(clstrvalue._ctrls, value)))
+                    clstrvalues.append(clstrvalue)
+                ctrl.value = clstrvalues
+            elif isinstance(ctrl, Numeric):
+                try:
+                    value = self._vi.GetControlValue(ctrl.name)
+                except com_error:
+                    # FXP not supported through LabVIEW's ActiveX server
+                    value = np.nan
+                ctrl.value = value
+            else:
+                value = self._vi.GetControlValue(ctrl.name)
+                if isinstance(ctrl, TimeStamp):
+                    value = value.replace(tzinfo=None)
+                ctrl.value = value
+
     def reinitialize_values(self):
         """Reinitialize all controls to default values
 
         Same as Edit->Reinitialize Values to Default
         """
         self._vi.ReinitializeAllToDefault()
-        for ctrl in self._ctrls.values():
-            value = self._vi.GetControlValue(ctrl.name)
-            if isinstance(ctrl, TimeStamp):
-                value = value.replace(tzinfo=None)
-            ctrl.value = value
+        self.read_controls()
 
     def __call__(self, **kwargs):
         """Call the VI as a subVI where the VI is in memory and not visible
@@ -311,6 +405,36 @@ class VI:
             self._ctrls[ctrl].value = value
 
 
+class Project:
+    """LabVIEW Project
+
+    Currently supports opening a VI using the LabVIEW version the project
+    was last saved in.
+    """
+
+    def __init__(self, lvproj_ref: win32com.client.CDispatch):
+        self._proj = lvproj_ref
+        self._lv = self._proj.Application
+
+    def open(self, file_name: str | Path) -> VI:
+        """Open a LabVIEW VI
+
+        Parameters
+        ----------
+        file_name : str or path-like
+            VI to open
+
+        Returns
+        -------
+        VI
+        """
+        file = Path(file_name)
+        if file.suffix == ".vi":
+            viref = self._lv.GetVIReference(str(file.absolute()))
+            return VI(viref)
+        raise NotImplementedError(f"'*{file.suffix}' not supported")
+
+
 # pylint:disable=attribute-defined-outside-init
 class App:
     """ActiveX connection to LabVIEW application"""
@@ -323,28 +447,25 @@ class App:
         """LabVIEW version"""
         return self._lv.Version
 
-    def get_VI(self, vi_name: str) -> VI:
-        """Instantiate a VI object
-
-        Parameters
-        ----------
-        vi_name : str or path-like
-        """
-        warnings.warn("get_VI will be removed in v0.4.0", FutureWarning, stacklevel=2)
-        return self.open(vi_name)
-
-    def open(self, file_name: str) -> VI:
-        """Open a LabVIEW VI
+    def open(self, file_name: str | Path) -> VI:
+        """Open a LabVIEW VI or Project
 
         Parameters
         ----------
         file_name : str or path-like
-            VI to open
+            VI or project to open
+
+        Returns
+        -------
+        VI or Project
         """
         file = Path(file_name)
         if file.suffix == ".vi":
             viref = self._lv.GetVIReference(str(file.absolute()))
             return VI(viref)
+        if file.suffix == ".lvproj":
+            lvproject_ref = self._lv.OpenProject(str(file.absolute()))
+            return Project(lvproject_ref)
         raise NotImplementedError(f"'*{file.suffix}' not supported")
 
     def explain_error(self, code: int) -> str:
@@ -393,7 +514,7 @@ class App:
             # e.g. rpyc server
             pythoncom.CoInitialize()  # pylint:disable=no-member
             self._lv = win32com.client.Dispatch("LabVIEW.Application")
-            methods = ["Quit"]
+            methods = ["Quit", "OpenProject"]
             for method in methods:
                 self._lv._FlagAsMethod(method)
             errvipath = str(
