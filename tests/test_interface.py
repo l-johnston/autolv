@@ -308,3 +308,13 @@ def test_project(lv, testdir):
     project = lv.open(testdir / "project.lvproj")
     vi = project.open(testdir / "project vi.vi")
     assert vi.a.value == 1.0
+
+
+def test_unimplementrefs(lv, testdir):
+    vi = lv.open(testdir / "unimplemented_refs.vi")
+    assert issubclass(type(vi.References.Panel), NotImplControl)
+
+
+def test_pathseptag(lv, testdir):
+    vi = lv.open(testdir / "path_septag.vi")
+    assert vi.Path.value == "file"
