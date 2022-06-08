@@ -564,9 +564,3 @@ class App:
         if self._lv is None:
             return "<LabVIEW not running>"
         return f"<LabVIEW {self.version}>"
-
-
-# TODO: remove
-if __name__ == "__main__":
-    lv = App()
-    vi = lv.open("d:/Python/autolv/tests/reorder cluster.vi")
