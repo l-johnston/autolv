@@ -220,3 +220,4 @@ before interacting with it in Python.
 - LV's 'Time Stamp' comes across ActiveX as naive and represented in Python
 as datetime.datetime.
 - LabVIEW's FXP and Waveform data types are not supported
+- Array's of clusters can be read but not set
