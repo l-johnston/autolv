@@ -17,6 +17,7 @@ import numpy as np
 from autolv.vistrings import parse_vistrings
 from autolv.datatypes import (
     IORefNum,
+    NotImplControl,
     make_control,
     DataFlow,
     valididentifier,
@@ -83,6 +84,8 @@ class VI:
                 vistr = f.read()
         self._ctrls = {k: make_control(**v) for k, v in parse_vistrings(vistr).items()}
         for ctrl in self._ctrls.values():
+            if isinstance(ctrl, NotImplControl):
+                continue
             if isinstance(ctrl, TabControl):
                 for page in ctrl:
                     for c in page:
@@ -109,8 +112,25 @@ class VI:
                     value = self._vi.GetControlValue(ctrl.name)
                 except com_error:
                     # FXP not supported through LabVIEW's ActiveX server
-                    value = np.nan
+                    # References not supported
+                    value = None
                 ctrl.value = value
+            elif isinstance(ctrl, Cluster):
+                if any(
+                    map(lambda c: isinstance(c, NotImplControl), ctrl._ctrls.values())
+                ):
+                    continue
+                try:
+                    value = self._vi.GetControlValue(ctrl.name)
+                except com_error:
+                    pass
+                else:
+                    if isinstance(ctrl, TimeStamp):
+                        value = value.replace(tzinfo=None)
+                    try:
+                        ctrl.value = value
+                    except AutoLVError:
+                        pass
             else:
                 try:
                     value = self._vi.GetControlValue(ctrl.name)
@@ -186,10 +206,14 @@ class VI:
                         value = self._vi.GetControlValue(ctrl.name)
                     except com_error:
                         # FXP not supported through LabVIEW's ActiveX server
-                        value = np.nan
+                        # Reference not supported
+                        value = None
                     ctrl.value = value
                 elif ctrl._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
-                    value = self._vi.GetControlValue(ctrl.name)
+                    try:
+                        value = self._vi.GetControlValue(ctrl.name)
+                    except com_error:
+                        value = None
                     if isinstance(ctrl, TimeStamp):
                         value = value.replace(tzinfo=None)
                     ctrl.value = value
@@ -243,6 +267,8 @@ class VI:
                             if isinstance(c, TimeStamp):
                                 v = v.replace(tzinfo=timezone.utc)
                             self._vi.SetControlValue(c.name, v)
+            elif isinstance(ctrl, ArrayCluster):
+                continue
             elif ctrl._dataflow in [DataFlow.CONTROL, DataFlow.UNKNOWN]:
                 value = ctrl.value
                 # special case TimeStamp due to timezone issue - see TimeStamp definition
@@ -335,7 +361,8 @@ class VI:
                     value = self._vi.GetControlValue(ctrl.name)
                 except com_error:
                     # FXP not supported through LabVIEW's ActiveX server
-                    value = np.nan
+                    # Reference not supported
+                    value = None
                 ctrl.value = value
             else:
                 value = self._vi.GetControlValue(ctrl.name)
@@ -542,4 +569,4 @@ class App:
 # TODO: remove
 if __name__ == "__main__":
     lv = App()
-    vi = lv.open("d:/temp/stresstest_spectrum3.vi")
+    vi = lv.open("d:/Python/autolv/tests/reorder cluster.vi")

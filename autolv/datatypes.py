@@ -104,9 +104,7 @@ class Numeric(LV_Control):
         self.value = kwargs.pop("value", 0.0)
 
     def __setattr__(self, item, value):
-        if item == "value":
-            if value is None:
-                value = np.nan
+        if item == "value" and value is not None:
             if not isinstance(value, Number):
                 raise AutoLVError(f"'{value}' not a number")
         super().__setattr__(item, value)
@@ -656,6 +654,10 @@ class TabControlPage(Sequence):
 
 class NotImplControl(LV_Control):
     """Control Not Implemented"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.value = None
 
     def __repr__(self):
         return "Not Implemented"

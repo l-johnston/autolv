@@ -296,7 +296,7 @@ def test_cantsetreadonlyattribute(lv, testdir):
 
 def test_fxp(lv, testdir):
     vi = lv.open(testdir / "fxp.vi")
-    assert vi.input.value is np.nan
+    assert vi.input.value is None
 
 
 def test_notimplementedcontrol(lv, testdir):
@@ -312,7 +312,7 @@ def test_project(lv, testdir):
 
 def test_unimplementrefs(lv, testdir):
     vi = lv.open(testdir / "unimplemented_refs.vi")
-    assert issubclass(type(vi.References.Panel), NotImplControl)
+    assert isinstance(vi.References.Panel, NotImplControl)
 
 
 def test_pathseptag(lv, testdir):
