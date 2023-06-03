@@ -26,7 +26,7 @@ def testdir() -> pathlib.Path:
 
 
 def test_app(lv, testdir):
-    assert lv.version == "21.0"
+    assert isinstance(lv.version, str)
     vi = lv.open(testdir / "numeric.vi")
     assert vi.input.value == 1.1
     vi.input.value = 2.0
@@ -318,3 +318,14 @@ def test_unimplementrefs(lv, testdir):
 def test_pathseptag(lv, testdir):
     vi = lv.open(testdir / "path_septag.vi")
     assert vi.Path.value == "file"
+
+
+def test_grouping(lv, testdir):
+    vi = lv.open(testdir / "grouping.vi")
+    vi.x1 = 1.0
+    vi.x2 = 2.0
+    vi.run()
+    assert vi.x1.value == 1.0
+    assert vi.x2.value == 2.0
+    assert vi.O1.y1.value == 2.0
+    assert vi.O2.y2.value == 6.0

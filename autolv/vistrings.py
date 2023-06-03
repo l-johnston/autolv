@@ -126,6 +126,9 @@ def _vistr2xml(vistr: str) -> str:
 
 def _recurse_ctrls(element: ET.Element) -> dict:
     controls = {}
+    for grouper in element.iterfind("GROUPER"):
+        for parts in grouper.iterfind("PARTS"):
+            controls.update(_recurse_ctrls(parts))
     for control in element.iterfind("CONTROL"):
         if control.attrib["type"] == "Type Definition":
             for part in control.find("PARTS").iterfind("PART"):
