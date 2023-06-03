@@ -10,3 +10,4 @@ autolv.egg-info
 *.txt
 .python-version
 dist
+*.aliases
