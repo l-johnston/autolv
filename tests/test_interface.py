@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 from autolv.interface import App, FPState
 from autolv.vistrings import _removeparttext
-from autolv.datatypes import AutoLVError, NotImplControl
+from autolv.datatypes import AutoLVError
 
 
 # pylint:disable=missing-function-docstring
@@ -295,13 +295,13 @@ def test_cantsetreadonlyattribute(lv, testdir):
 
 
 def test_fxp(lv, testdir):
-    vi = lv.open(testdir / "fxp.vi")
-    assert vi.input.value is None
+    with pytest.warns():
+        lv.open(testdir / "fxp.vi")
 
 
 def test_notimplementedcontrol(lv, testdir):
-    vi = lv.open(testdir / "wdt.vi")
-    assert issubclass(type(vi.wdt), NotImplControl)
+    with pytest.warns():
+        lv.open(testdir / "wdt.vi")
 
 
 def test_project(lv, testdir):
@@ -311,8 +311,8 @@ def test_project(lv, testdir):
 
 
 def test_unimplementrefs(lv, testdir):
-    vi = lv.open(testdir / "unimplemented_refs.vi")
-    assert isinstance(vi.References.Panel, NotImplControl)
+    with pytest.warns():
+        lv.open(testdir / "unimplemented_refs.vi")
 
 
 def test_pathseptag(lv, testdir):
@@ -329,3 +329,11 @@ def test_grouping(lv, testdir):
     assert vi.x2.value == 2.0
     assert vi.O1.y1.value == 2.0
     assert vi.O2.y2.value == 6.0
+
+
+def test_waveformgraph_wdt(lv, testdir):
+    with pytest.warns():
+        vi = lv.open(testdir / "waveformgraph_wdt.vi")
+        vi.x1 = 2.0
+        vi.run()
+        assert vi.x1.value == 2.0
