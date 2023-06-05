@@ -11,3 +11,5 @@ autolv.egg-info
 .python-version
 dist
 *.aliases
+.coverage
+htmlcov/

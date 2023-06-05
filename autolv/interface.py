@@ -6,8 +6,11 @@ from tempfile import TemporaryDirectory
 from enum import IntEnum
 import asyncio
 from datetime import timezone
+import functools
 import itertools
 import struct
+import logging
+import warnings
 import pythoncom
 from pythoncom import VT_ARRAY, VT_BYREF, VT_I2, VT_UI4, VT_UI1, VT_VARIANT, com_error
 import pywintypes
@@ -26,9 +29,16 @@ from autolv.datatypes import (
     Cluster,
     TabControl,
     ArrayCluster,
-    Numeric,
     AutoLVError,
+    LV_Control,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+class AutoLVWarning(Warning):
+    """Warning for AutoLV"""
 
 
 class ExecState(IntEnum):
@@ -83,66 +93,21 @@ class VI:
             with open(file, "r", encoding="ansi") as f:
                 vistr = f.read()
         self._ctrls = {k: make_control(**v) for k, v in parse_vistrings(vistr).items()}
-        for ctrl in self._ctrls.values():
-            if isinstance(ctrl, NotImplControl):
-                continue
-            if isinstance(ctrl, TabControl):
-                for page in ctrl:
-                    for c in page:
-                        v = self._vi.GetControlValue(c.name)
-                        if isinstance(c, TimeStamp):
-                            v = v.replace(tzinfo=None)
-                        try:
-                            c.value = v
-                        except AutoLVError:
-                            pass
-            elif isinstance(ctrl, ArrayCluster):
-                rawvalues = self._vi.GetControlValue(ctrl.name)
-                clstrvalues = []
-                for value in rawvalues:
-                    clstrvalue = Cluster(**ctrl._cluster)
-                    try:
-                        clstrvalue.update(dict(zip(clstrvalue._ctrls, value)))
-                    except AutoLVError:
-                        pass
-                    clstrvalues.append(clstrvalue)
-                ctrl.value = clstrvalues
-            elif isinstance(ctrl, Numeric):
-                try:
-                    value = self._vi.GetControlValue(ctrl.name)
-                except com_error:
-                    # FXP not supported through LabVIEW's ActiveX server
-                    # References not supported
-                    value = None
-                ctrl.value = value
-            elif isinstance(ctrl, Cluster):
-                if any(
-                    map(lambda c: isinstance(c, NotImplControl), ctrl._ctrls.values())
-                ):
-                    continue
-                try:
-                    value = self._vi.GetControlValue(ctrl.name)
-                except com_error:
-                    pass
-                else:
-                    if isinstance(ctrl, TimeStamp):
-                        value = value.replace(tzinfo=None)
-                    try:
-                        ctrl.value = value
-                    except AutoLVError:
-                        pass
+        self.read_controls()
+
+    def _get_ctrl_value(self, ctrl: LV_Control):
+        if ctrl.supported:
+            try:
+                value = self._vi.GetControlValue(ctrl.name)
+            except com_error:
+                self._issue_ctrl_not_supported_warning(ctrl)
             else:
+                if isinstance(ctrl, TimeStamp):
+                    value = value.replace(tzinfo=None)
                 try:
-                    value = self._vi.GetControlValue(ctrl.name)
-                except com_error:
-                    pass
-                else:
-                    if isinstance(ctrl, TimeStamp):
-                        value = value.replace(tzinfo=None)
-                    try:
-                        ctrl.value = value
-                    except AutoLVError:
-                        pass
+                    ctrl.value = value
+                except AutoLVError:
+                    self._issue_ctrl_not_supported_warning(ctrl)
 
     def __getitem__(self, item):
         return self._ctrls[item]
@@ -184,39 +149,7 @@ class VI:
         except asyncio.CancelledError:
             self._vi.Abort()
         else:
-            for ctrl in self._ctrls.values():
-                if isinstance(ctrl, TabControl):
-                    for page in ctrl:
-                        for c in page:
-                            if c._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
-                                v = self._vi.GetControlValue(c.name)
-                                if isinstance(c, TimeStamp):
-                                    v = v.replace(tzinfo=None)
-                                c.value = v
-                elif isinstance(ctrl, ArrayCluster):
-                    rawvalues = self._vi.GetControlValue(ctrl.name)
-                    clstrvalues = []
-                    for value in rawvalues:
-                        clstrvalue = Cluster(**ctrl._cluster)
-                        clstrvalue.update(dict(zip(clstrvalue._ctrls, value)))
-                        clstrvalues.append(clstrvalue)
-                    ctrl.value = clstrvalues
-                elif isinstance(ctrl, Numeric):
-                    try:
-                        value = self._vi.GetControlValue(ctrl.name)
-                    except com_error:
-                        # FXP not supported through LabVIEW's ActiveX server
-                        # Reference not supported
-                        value = None
-                    ctrl.value = value
-                elif ctrl._dataflow in [DataFlow.INDICATOR, DataFlow.UNKNOWN]:
-                    try:
-                        value = self._vi.GetControlValue(ctrl.name)
-                    except com_error:
-                        value = None
-                    if isinstance(ctrl, TimeStamp):
-                        value = value.replace(tzinfo=None)
-                    ctrl.value = value
+            self.read_controls()
 
     async def _spinner(self):
         spinner = ["-", "\\", "|", "/", "-", "|"]
@@ -338,37 +271,44 @@ class VI:
         colors = np.array(colors.value)
         return rgba(bitmap, colors)
 
+    # Using lru_cache to issue warning only once
+    @functools.lru_cache(maxsize=128)
+    def _issue_ctrl_not_supported_warning(self, ctrl: LV_Control):
+        msg = f"Control {ctrl.name!r} not supported by LabVIEW's ActiveX interface"
+        warnings.warn(msg, AutoLVWarning)
+        ctrl.supported = False
+
     def read_controls(self):
         """Read control values from front panel"""
         for ctrl in self._ctrls.values():
-            if isinstance(ctrl, TabControl):
+            if isinstance(ctrl, NotImplControl):
+                self._issue_ctrl_not_supported_warning(ctrl)
+            elif isinstance(ctrl, TabControl):
                 for page in ctrl:
                     for c in page:
-                        v = self._vi.GetControlValue(c.name)
-                        if isinstance(c, TimeStamp):
-                            v = v.replace(tzinfo=None)
-                        c.value = v
+                        self._get_ctrl_value(c)
             elif isinstance(ctrl, ArrayCluster):
                 rawvalues = self._vi.GetControlValue(ctrl.name)
                 clstrvalues = []
                 for value in rawvalues:
                     clstrvalue = Cluster(**ctrl._cluster)
-                    clstrvalue.update(dict(zip(clstrvalue._ctrls, value)))
-                    clstrvalues.append(clstrvalue)
-                ctrl.value = clstrvalues
-            elif isinstance(ctrl, Numeric):
-                try:
-                    value = self._vi.GetControlValue(ctrl.name)
-                except com_error:
-                    # FXP not supported through LabVIEW's ActiveX server
-                    # Reference not supported
-                    value = None
-                ctrl.value = value
+                    try:
+                        clstrvalue.update(dict(zip(clstrvalue._ctrls, value)))
+                    except AutoLVError:
+                        self._issue_ctrl_not_supported_warning(ctrl)
+                        clstrvalue = None
+                        break
+                    else:
+                        clstrvalues.append(clstrvalue)
+                ctrl._value = clstrvalues
+            elif isinstance(ctrl, Cluster):
+                for c in ctrl.as_dict().values():
+                    if isinstance(c, NotImplControl):
+                        self._issue_ctrl_not_supported_warning(ctrl)
+                        break
+                self._get_ctrl_value(ctrl)
             else:
-                value = self._vi.GetControlValue(ctrl.name)
-                if isinstance(ctrl, TimeStamp):
-                    value = value.replace(tzinfo=None)
-                ctrl.value = value
+                self._get_ctrl_value(ctrl)
 
     def reinitialize_values(self):
         """Reinitialize all controls to default values

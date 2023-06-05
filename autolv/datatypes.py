@@ -1,6 +1,5 @@
 """A Python emulation of LabVIEW's Cluster"""
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from numbers import Number
 from enum import IntEnum
 import re
@@ -57,14 +56,11 @@ class LV_Control(ABC):
                 pass
         # Exported VI strings does not indicate dataflow direction
         self._dataflow = DataFlow.UNKNOWN
+        self._supported = True
+        self._value = None
 
-    @abstractmethod
     def __repr__(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __str__(self):
-        raise NotImplementedError
+        return repr(self.value)
 
     def __setattr__(self, item, value):
         if item in self.__dict__ and item in READONLY_ATTRIBUTES:
@@ -95,6 +91,26 @@ class LV_Control(ABC):
             tests.append(getattr(self, selfattr) == getattr(other, otherattr))
         return all(tests)
 
+    @property
+    def supported(self) -> bool:
+        """True if control type is supported"""
+        return self._supported
+
+    @supported.setter
+    def supported(self, value: bool):
+        self._supported = bool(value)
+
+    @property
+    @abstractmethod
+    def value(self):
+        """Return the control's value"""
+        return None
+
+    @value.setter
+    @abstractmethod
+    def value(self, new_value):
+        pass
+
 
 class Numeric(LV_Control):
     """Numeric"""
@@ -103,17 +119,15 @@ class Numeric(LV_Control):
         super().__init__(**kwargs)
         self.value = kwargs.pop("value", 0.0)
 
-    def __setattr__(self, item, value):
-        if item == "value" and value is not None:
-            if not isinstance(value, Number):
-                raise AutoLVError(f"'{value}' not a number")
-        super().__setattr__(item, value)
+    @property
+    def value(self):
+        return self._value
 
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
+    @value.setter
+    def value(self, new_value):
+        if not isinstance(new_value, Number):
+            raise AutoLVError(f"'{new_value}' not a number")
+        self._value = new_value
 
 
 class Boolean(LV_Control):
@@ -123,20 +137,18 @@ class Boolean(LV_Control):
         super().__init__(**kwargs)
         self.value = kwargs.pop("value", False)
 
-    def __setattr__(self, item, value):
-        if item == "value":
-            if not isinstance(value, bool):
-                raise AutoLVError(f"'{value}' not a boolean")
-        super().__setattr__(item, value)
-
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
-
     def __bool__(self):
         return self.value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        if not isinstance(new_value, bool):
+            raise AutoLVError(f"'{new_value}' not a boolean")
+        self._value = new_value
 
 
 class Array(LV_Control):
@@ -146,21 +158,18 @@ class Array(LV_Control):
         super().__init__(**kwargs)
         self.value = kwargs.pop("value", np.array([]))
 
-    def __setattr__(self, item, value):
-        if item == "value":
-            if isinstance(value, str) or not hasattr(value, "__iter__"):
-                raise AutoLVError(f"'{value}' not array like")
-            value = np.array(value)
-        super().__setattr__(item, value)
+    @property
+    def value(self):
+        return self._value
 
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
+    @value.setter
+    def value(self, new_value):
+        if isinstance(new_value, str) or not hasattr(new_value, "__iter__"):
+            raise AutoLVError(f"'{new_value}' not array like")
+        self._value = np.array(new_value)
 
 
-class Cluster(LV_Control, Sequence):
+class Cluster(LV_Control):
     """Cluster - A Python emulation of LabVIEW's Cluster
 
     A cluster in LabVIEW appears as a key-value mapping but is actually a C-struct
@@ -192,33 +201,18 @@ class Cluster(LV_Control, Sequence):
         if isinstance(control, int):
             control = list(self._ctrls)[control]
         self._ctrls[control].value = value
-        values = [ctrl.value for ctrl in self._ctrls]
-        self._setfp(self.name, values)
 
     def __setattr__(self, item, value):
         if "_ctrls" in self.__dict__ and item in self._ctrls:
             self._ctrls[item].value = value
-        elif item == "value":
-            if isinstance(value, dict):
-                self.update(value)
-            elif value is None:
-                pass
-            else:
-                try:
-                    for c, v in zip(self._ctrls, value):
-                        self._ctrls[c].value = v
-                except TypeError:
-                    pass
         else:
             super().__setattr__(item, value)
 
     def __getattr__(self, item):
         if item in self._ctrls:
             value = self._ctrls[item]
-        elif item == "value":
-            value = [c.value for c in self._ctrls.values()]
         else:
-            value = super().__getattribute__(item)
+            raise AttributeError(f"'{item}' not in Cluster")
         return value
 
     def __iter__(self):
@@ -236,9 +230,6 @@ class Cluster(LV_Control, Sequence):
             if k == control:
                 return idx
         raise ValueError(f"{control} not in Cluster")
-
-    def count(self, _):
-        raise NotImplementedError
 
     def as_dict(self):
         """Return controls as a dict"""
@@ -262,6 +253,9 @@ class Cluster(LV_Control, Sequence):
             tests.append(getattr(self, selfctrl) == getattr(other, otherctrl))
         return all(tests)
 
+    def __hash__(self):
+        return hash(self.name)
+
     def __bool__(self):
         return len(self) > 0
 
@@ -279,16 +273,36 @@ class Cluster(LV_Control, Sequence):
                 ctrls.append(ctrl)
             else:
                 ctrls.append(f"['{ctrl}']")
-        methods = ["as_dict", "count", "index", "update", "reorder_controls", "value"]
-        return attrs + ctrls + methods
+        return sorted(attrs + ctrls)
 
     @property
     def value(self):
-        """Return cluster's values as list"""
+        """Return cluster's control values as tuple"""
         values = []
         for _, ctrl in self._ctrls.items():
             values.append(ctrl.value)
-        return values
+        return tuple(values)
+
+    @value.setter
+    def value(self, new_value):
+        if isinstance(new_value, dict):
+            self.update(new_value)
+        elif new_value is None:
+            pass
+        else:
+            try:
+                for c, v in zip(self._ctrls, new_value):
+                    self._ctrls[c].value = v
+            except AutoLVError:
+                if set(self._ctrls) == {"status", "code", "source"}:
+                    self.reorder_controls(["status", "code", "source"])
+                    try:
+                        for c, v in zip(self._ctrls, new_value):
+                            self._ctrls[c].value = v
+                    except AutoLVError as exc:
+                        raise AutoLVError(
+                            f"{new_value} not a valid Cluster value"
+                        ) from exc
 
     def reorder_controls(self, new_order: list):
         """Reorder the controls
@@ -314,34 +328,16 @@ class ArrayCluster(LV_Control):
         super().__init__(**kwargs)
         if self._cluster is not None:
             self._cluster = self._cluster.popitem()[1]
-        self.value = kwargs.pop("value", [])
+        self._value = kwargs.pop("value", [])
 
-    def __setattr__(self, item, value):
-        if item == "value":
-            if isinstance(value, str) or not hasattr(value, "__iter__"):
-                raise AutoLVError(f"'{value}' not array like")
-        super().__setattr__(item, value)
+    @property
+    def value(self):
+        """Return array of clusters"""
+        return self._value
 
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
-
-    def reorder_cluster_controls(self, new_order):
-        """Reorder the controls
-
-        This function provides a work around to specify the ordering
-        of controls of a cluster in the Silver style.
-
-        Parameters
-        ----------
-        new_order: list of control names ordered as shown in LabVIEW
-        """
-        ctrls = self._cluster["ctrls"].copy()
-        self._cluster["ctrls"] = {}
-        for name in new_order:
-            self._cluster["ctrls"][name] = ctrls[name]
+    @value.setter
+    def value(self, value):
+        raise NotImplementedError("ArrayCluster.value setter not implemented")
 
 
 def is_ragged(array, res):
@@ -368,39 +364,39 @@ def is_ragged(array, res):
 
 
 class WaveformGraph(LV_Control):
-    """'Waveform Graph' can be either 1d or 2d Array or Cluster"""
+    """'Waveform Graph' can be either 1d, 2d Array or Cluster, but not Waveform Data Type"""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = kwargs.pop("value", np.array([]))
+        self._value = kwargs.pop("value", np.array([]))
 
     def __setattr__(self, item, value):
-        if item == "value":
-            if isinstance(value, str) or not hasattr(value, "__iter__"):
-                raise AutoLVError(f"'{value}' not array like")
-            if not is_ragged(value, False):
-                value = np.array(value)
-            else:
-                value = list(value)
-                super().__setattr__("t0", value[0])
-                super().__setattr__("dt", value[1])
-                super().__setattr__("Y", np.array(value[2]))
+        try:
+            index = ["t0", "dt", "Y"].index(item)
+        except ValueError:
+            pass
         else:
-            try:
-                index = ["t0", "dt", "Y"].index(item)
-            except ValueError:
-                pass
-            else:
-                lvalue = super().__getattribute__("value")
-                lvalue[index] = value
-                super().__setattr__("value", lvalue)
+            lvalue = super().__getattribute__("value")
+            lvalue[index] = value
+            super().__setattr__("value", lvalue)
         super().__setattr__(item, value)
 
-    def __repr__(self):
-        return f"{self.value}"
+    @property
+    def value(self):
+        return self._value
 
-    def __str__(self):
-        return f"{self.value}"
+    @value.setter
+    def value(self, value):
+        if isinstance(value, str) or not hasattr(value, "__iter__"):
+            raise AutoLVError(f"'{value}' not array like")
+        if not is_ragged(value, False):
+            value = np.array(value)
+        else:
+            value = list(value)
+            super().__setattr__("t0", value[0])
+            super().__setattr__("dt", value[1])
+            super().__setattr__("Y", np.array(value[2]))
+        self._value = value
 
 
 class String(LV_Control):
@@ -408,19 +404,17 @@ class String(LV_Control):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = kwargs.pop("value", "")
+        self._value = kwargs.pop("value", "")
 
-    def __setattr__(self, item, value):
-        if item == "value":
-            if not isinstance(value, str):
-                raise AutoLVError(f"'{value}' not a string")
-        super().__setattr__(item, value)
+    @property
+    def value(self):
+        return self._value
 
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
+    @value.setter
+    def value(self, value):
+        if not isinstance(value, str):
+            raise AutoLVError(f"'{value}' not a string")
+        self._value = value
 
 
 class Path(LV_Control):
@@ -428,24 +422,21 @@ class Path(LV_Control):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = pathlib.Path(kwargs.pop("value", ""))
-
-    def __setattr__(self, item, value):
-        if item == "value":
-            if not isinstance(value, (str, pathlib.Path)):
-                raise AutoLVError(f"'{value}' not a string")
-            value = pathlib.Path(value)
-        super().__setattr__(item, value)
+        self._value = pathlib.Path(kwargs.pop("value", ""))
 
     def __getattribute__(self, item):
         res = super().__getattribute__(item)
         return str(res) if item == "value" else res
 
-    def __repr__(self):
-        return f"{self.value}"
+    @property
+    def value(self):
+        return self._value
 
-    def __str__(self):
-        return f"{self.value}"
+    @value.setter
+    def value(self, value):
+        if not isinstance(value, (str, pathlib.Path)):
+            raise AutoLVError(f"'{value}' not a string")
+        self._value = pathlib.Path(value)
 
 
 class TimeStamp(LV_Control):
@@ -457,19 +448,19 @@ class TimeStamp(LV_Control):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = kwargs.pop("value", self.LV_EPOCH)
+        self._value = kwargs.pop("value", self.LV_EPOCH)
 
-    def __setattr__(self, item, value):
-        if item == "value":
-            if not isinstance(value, datetime):
-                raise AutoLVError(f"'{value}' not a datetime")
-        super().__setattr__(item, value)
+    @property
+    def value(self):
+        return self._value
 
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
+    @value.setter
+    def value(self, value):
+        if isinstance(value, tuple):
+            value = datetime(*value)
+        if not isinstance(value, datetime):
+            raise AutoLVError(f"'{value}' not a datetime")
+        self._value = value
 
 
 class Enum(LV_Control):
@@ -478,19 +469,19 @@ class Enum(LV_Control):
     # LV Enum comes across ActiveX as an integer
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = kwargs.pop("value", 0)
+        self._value = kwargs.pop("value", 0)
 
-    def __setattr__(self, item, value):
-        if item == "value":
-            if not isinstance(value, int):
-                raise AutoLVError(f"'{value}' not an integer")
-        super().__setattr__(item, value)
+    @property
+    def value(self):
+        return self._value
 
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
+    @value.setter
+    def value(self, value):
+        if isinstance(value, str):
+            value = int(value)
+        if not isinstance(value, int):
+            raise AutoLVError(f"'{value}' not an integer")
+        self._value = value
 
 
 class IORefNum(LV_Control):
@@ -500,21 +491,25 @@ class IORefNum(LV_Control):
     # but end user only needs to know the <str> e.g. PXI1Slot1
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = kwargs.pop("value", ("", 0))
-
-    def __setattr__(self, item, value):
-        if item == "value":
-            if isinstance(value, str):
-                value = (value, 0)
-            if not isinstance(value, tuple):
-                raise AutoLVError(f"'{value}' not a tuple (<str>, <int>)")
-        super().__setattr__(item, value)
+        self._value = kwargs.pop("value", ("", 0))
 
     def __repr__(self):
         return f"{self.value[0]}"
 
     def __str__(self):
         return f"{self.value[0]}"
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        if isinstance(value, str):
+            value = (value, 0)
+        if not isinstance(value, tuple):
+            raise AutoLVError(f"'{value}' not a tuple (<str>, <int>)")
+        self._value = value
 
 
 class IVILogicalName(IORefNum):
@@ -538,14 +533,8 @@ class Ring(LV_Control):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = kwargs.pop("value", 0)
-        self.items = kwargs.pop("items", None)
-
-    def __setattr__(self, item, value):
-        if item == "value":
-            if isinstance(value, str):
-                value = self.items.index(value)
-        super().__setattr__(item, value)
+        self._value = kwargs.pop("value", 0)
+        self._items = kwargs.pop("items", None)
 
     def __repr__(self):
         return f"{self.items[self.value]}"
@@ -553,8 +542,23 @@ class Ring(LV_Control):
     def __str__(self):
         return f"{self.items[self.value]}"
 
+    @property
+    def items(self):
+        """Ring's items"""
+        return self._items
 
-class TabControl(LV_Control, Sequence):
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        if isinstance(value, str):
+            value = self.items.index(value)
+        self._value = value
+
+
+class TabControl(LV_Control):
     """Tab Control"""
 
     def __init__(self, **kwargs):
@@ -566,9 +570,6 @@ class TabControl(LV_Control, Sequence):
 
     def __repr__(self):
         return "<Tab Control>"
-
-    def __str__(self):
-        return self.__repr__()
 
     def __getitem__(self, page):
         if isinstance(page, int):
@@ -600,8 +601,17 @@ class TabControl(LV_Control, Sequence):
         for _, page in self._pages.items():
             yield page
 
+    @property
+    def value(self):
+        """Tab Control's value"""
+        return self._value
 
-class TabControlPage(Sequence):
+    @value.setter
+    def value(self, _):
+        self._value = None
+
+
+class TabControlPage:
     """A page of a tab control"""
 
     def __init__(self, **ctrls):
@@ -611,9 +621,6 @@ class TabControlPage(Sequence):
 
     def __repr__(self):
         return "<Tab Control Page>"
-
-    def __str__(self):
-        return self.__repr__()
 
     def __dir__(self):
         attrs = super().__dir__()
@@ -657,13 +664,19 @@ class NotImplControl(LV_Control):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.value = None
+        self._supported = False
+        self._value = None
 
     def __repr__(self):
-        return "Not Implemented"
+        return "<NotImplemented>"
 
-    def __str__(self):
-        return self.__repr__()
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, _):
+        self._value = None
 
 
 LVControl_LU = {
