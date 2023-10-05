@@ -1,8 +1,6 @@
 """Interact with LabVIEW VIs from Python"""
 # pylint:disable=no-name-in-module
 # pylint:disable=protected-access
-import xml.etree.ElementTree as ET
-import io
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from enum import IntEnum
@@ -19,7 +17,7 @@ import pywintypes
 import win32com.client
 from win32com.client import VARIANT
 import numpy as np
-from autolv.vistrings import parse_vistrings, _vistr2xml
+from autolv.vistrings import parse_vistrings
 from autolv.datatypes import (
     IORefNum,
     NotImplControl,
