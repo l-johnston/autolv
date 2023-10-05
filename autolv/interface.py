@@ -97,6 +97,7 @@ class VI:
             k: make_control(**v) for k, v in parse_vistrings(self._vistr).items()
         }
         self.read_controls()
+        self.__doc__ = self.context_help()
 
     def _get_ctrl_value(self, ctrl: LV_Control):
         if ctrl.supported:
@@ -408,6 +409,9 @@ class VI:
         """
         self._vi.Description = help_string
         self._vi.SaveInstrument()
+
+    def __repr__(self):
+        return f"<VI {self.name}>"
 
 
 class Project:
