@@ -1,6 +1,8 @@
 """Interact with LabVIEW VIs from Python"""
 # pylint:disable=no-name-in-module
 # pylint:disable=protected-access
+import xml.etree.ElementTree as ET
+import io
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from enum import IntEnum
@@ -17,7 +19,7 @@ import pywintypes
 import win32com.client
 from win32com.client import VARIANT
 import numpy as np
-from autolv.vistrings import parse_vistrings
+from autolv.vistrings import parse_vistrings, _vistr2xml
 from autolv.datatypes import (
     IORefNum,
     NotImplControl,
@@ -83,6 +85,7 @@ class VI:
             "GetPanelImage",
             "CloseFrontPanel",
             "ReinitializeAllToDefault",
+            "SaveInstrument",
         ]
         for method in methods:
             self._vi._FlagAsMethod(method)
@@ -91,8 +94,10 @@ class VI:
             file = Path(tmpdir).joinpath(self.name)
             self._vi.ExportVIStrings(str(file.absolute()))
             with open(file, "r", encoding="ansi") as f:
-                vistr = f.read()
-        self._ctrls = {k: make_control(**v) for k, v in parse_vistrings(vistr).items()}
+                self._vistr = f.read()
+        self._ctrls = {
+            k: make_control(**v) for k, v in parse_vistrings(self._vistr).items()
+        }
         self.read_controls()
 
     def _get_ctrl_value(self, ctrl: LV_Control):
@@ -374,6 +379,37 @@ class VI:
         self._vi.Call(ctrls, values)
         for ctrl, value in zip(ctrls.value, values.value):
             self._ctrls[ctrl].value = value
+
+    def export_strings(self, file: Path):
+        """Export VI strings to file
+
+        Parameters
+        ----------
+        file : str or path-like
+            output file
+        """
+        file = Path(file)
+        with open(file, "w", encoding="ansi") as f:
+            f.write(self._vistr)
+
+    def context_help(self) -> str:
+        """Return VI's context help as a string"""
+        desc = self._vi.Description
+        return desc.replace("<B>", "").replace("</B>", "")
+
+    def set_context_help(self, help_string: str):
+        """Set VI's context help
+
+        The help string is displayed in the VI's context help window. Text can be formatted
+        bold using <B> and </B> tags.
+
+        Parameters
+        ----------
+        help_string : str
+            help string
+        """
+        self._vi.Description = help_string
+        self._vi.SaveInstrument()
 
 
 class Project:

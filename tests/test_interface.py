@@ -1,6 +1,8 @@
 """Test interface"""
 from datetime import datetime
 import pathlib
+import shutil
+import tempfile
 import pytest
 import numpy as np
 from autolv.interface import App, FPState
@@ -337,3 +339,17 @@ def test_waveformgraph_wdt(lv, testdir):
         vi.x1 = 2.0
         vi.run()
         assert vi.x1.value == 2.0
+
+
+def test_context_help(lv, testdir):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = pathlib.Path(tmpdir)
+        src = testdir / "test.vi"
+        dst = tmpdir / "test.vi"
+        shutil.copyfile(src, dst)
+        vi = lv.open(dst)
+        vi.set_context_help("abc")
+        dst_copy = tmpdir / "test_copy.vi"
+        shutil.copyfile(dst, dst_copy)
+        vi_copy = lv.open(dst_copy)
+        assert vi_copy.context_help() == "abc"
