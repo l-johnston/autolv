@@ -207,6 +207,13 @@ Cluster({'code': True, 'source': , 'status': False})
 Cluster({'status': True, 'code': 1, 'source': abc})
 ```
 
+## VI's Context Help
+```python
+>>> print(vi.context_help())
+>>> vi.set_context_help("Does stuff...")
+```
+
+
 Notes
 -----
 - LV Controls have a Label attribute. ActiveX calls this Label 'name' and this is
