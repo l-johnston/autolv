@@ -211,6 +211,7 @@ Cluster({'status': True, 'code': 1, 'source': abc})
 ```python
 >>> print(vi.context_help())
 >>> vi.set_context_help("Does stuff...")
+>>> help(vi)
 ```
 
 
